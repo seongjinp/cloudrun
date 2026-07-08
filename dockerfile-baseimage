@@ -1,0 +1,18 @@
+FROM asia-northeast3-docker.pkg.dev/pjt-prd-lgcaip-cicd/ar-prd-lgcaip-cicd-runner/runner-image:3.11 AS builder
+
+# 작업 디렉토리 설정 
+COPY . /app
+WORKDIR /app
+
+RUN --mount=type=secret,id=sa_key,target=/home/appuser/tmp/sa-key.json,mode=0644 \
+   cp /home/appuser/tmp/sa-key.json /home/appuser/.config/gcloud/application_default_credentials.json && \
+   pip install --upgrade --no-cache-dir -r requirements.txt --target=/home/appuser/packages --break-system-packages --extra-index-url https://pypi.org/simple && \
+   rm /home/appuser/.config/gcloud/application_default_credentials.json
+
+FROM asia-northeast3-docker.pkg.dev/pjt-prd-lgcaip-cicd/ar-prd-lgcaip-cicd-runner/python:3.11
+COPY --from=builder /home/appuser/packages /app/python_packages/
+
+ENV PYTHONPATH=/app/python_packages:${PYTHONPATH}
+
+COPY . /app
+WORKDIR /app
