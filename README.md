@@ -20,6 +20,8 @@
 - `env.py` — 비민감 기본값(리전·로그 경로 등)만 채우는 폴백. `LITELLM_MASTER_KEY`·`DATABASE_URL`·
   `LLM_API_KEY_QWEN` 같은 민감값은 여기 두지 않고 GitLab CI/CD Variables + `--set-env-vars`로
   Cloud Run에 주입한다.
+- `scripts/add_litellm_users.py` — 엑셀로 LiteLLM 사용자 계정을 일괄 등록하는 수동 실행용 스크립트
+  (CI/CD 미연동). 사용법은 `scripts/README.md` 참고.
 - `vendor/prisma-engines/{schema-engine,query-engine}.gz` — Prisma 엔진 바이너리를 vendoring한
   것. 사내망에서 `binaries.prisma.sh`가 완전히 차단되어 있어(실측 확인) prisma CLI의 자체 다운로드가
   빌드·기동 양쪽에서 실패한다. `dockerfile-baseimage`가 이 파일을 풀어서
