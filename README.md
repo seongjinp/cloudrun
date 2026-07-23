@@ -39,6 +39,30 @@
 `master`(prd)/`poc` 브랜치로 확장할 때는 동일한 이름 규칙(`PRD_*`/`POC_*`)으로 등록하고
 `deploy-prd`/`deploy-poc` job에도 동일하게 `--set-env-vars`를 추가해야 한다(아직 미적용).
 
+### 등록 방법
+
+1. GitLab에서 이 프로젝트 페이지로 이동 → 왼쪽 사이드바 **Settings → CI/CD**.
+2. **Variables** 섹션을 펼치고 **Add variable** 클릭.
+3. 위 3개(`DEV_LITELLM_MASTER_KEY`, `DEV_DATABASE_URL`, `DEV_LLM_API_KEY_QWEN`)를 각각 아래처럼
+   추가:
+   - **Key**: 변수명 그대로 입력
+   - **Value**: 실제 값
+   - **Type**: Variable (기본값 그대로)
+   - **Flags**: `Mask variable` 체크(잡 로그에 값이 노출되지 않도록), `Protect variable`은 이
+     프로젝트에서 `develop`이 protected branch로 지정돼 있는지 확인 후 체크(아니면 job에서 변수를
+     못 읽음 — 헷갈리면 일단 체크 해제하고 파이프라인이 실패하는지로 확인).
+   - **Environment scope**: `All (default)` 그대로 둬도 무방(브랜치별로 이미 job이 나뉘어 있어
+     `develop` job에서만 참조됨).
+4. `DEV_DATABASE_URL`은 `postgresql://user:pass@host:port/db` 형태라 `/`, `:`, `@`가 들어가는데,
+   GitLab 버전에 따라 이런 문자가 섞이면 **"Mask variable" 체크 시 에러**가 뜰 수 있다(마스킹 가능
+   문자셋 제한). 이 경우:
+   - 그냥 마스킹 없이 저장(로그에 안 찍히게 스크립트 쪽에서 관리하는 수밖에 없음), 또는
+   - 값을 base64로 인코딩해서 저장(`echo -n '<원본 DSN>' | base64`)하고, `.gitlab-ci.yml`의
+     `deploy-dev` script에서 `DATABASE_URL=$(echo $DEV_DATABASE_URL | base64 -d)`처럼 디코드해서
+     쓰도록 바꾼다(현재는 미적용 — 마스킹이 막히면 이 방식으로 전환 필요).
+5. 저장 후 `develop`에 push하면 다음 파이프라인부터 자동으로 반영된다(재실행 없이 값만 바꾼
+   경우엔 새 파이프라인을 한 번 더 돌려야 반영됨 — 변수 값은 파이프라인 시작 시점에 읽힘).
+
 ## litellm 버전 업그레이드 시 체크리스트
 
 1. `requirements.txt`의 `litellm[proxy,extra_proxy]==X.Y.Z` 갱신.
