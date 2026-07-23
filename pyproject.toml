@@ -1,0 +1,20 @@
+[project]
+name = "corefab-gateway-cloudrun"
+version = "0.1.0"
+description = "LiteLLM 게이트웨이 — GCP Cloud Run 배포 전용 독립 소스(gateway/의 로컬 dev 게이트웨이와 완전 분리, 2026-07-23). Cloud Run 컨테이너 빌드(Dockerfile)의 유일한 소스이며, git subtree로 배포 미러 repo(github.com/seongjinp/cloudrun)에 밀어 CD를 트리거한다."
+requires-python = ">=3.12"
+# 정확 핀 — 업그레이드 시 이 디렉토리에서 uv lock 재생성 + Cloud Run 재배포 후 probe/실측 회귀.
+# 1.93.0(2026-07-23, gateway/에서 분리 시점 값 승계): claude-sonnet-5 비용맵 편입(1.92.0+)·최신
+# anthropic-beta allowlist 확보. Dockerfile의 베이스 이미지 태그(ghcr.io/berriai/litellm:v1.93.0)와
+# 반드시 동일해야 한다(패치가 어댑터 내부 시그니처에 의존 — 버전 스큐 시 몽키패치가 조용히 빗나간다).
+# google-cloud-aiplatform: vertex_ai 프로바이더 인증(google-auth ADC 포함) — LiteLLM 공식 문서 권장.
+# ⚠️ Docker 빌드(Dockerfile)에는 이 패키지를 설치하지 않는다 — 베이스 이미지가 pip 없는 최소 venv라
+# 설치 자체가 불가능하고, 실배포 실측상 vertex는 litellm 1급 프로바이더라 베이스 이미지 내장만으로
+# 충분함을 확인했다(2026-07-23). 이 로컬 uv 프로젝트(오프라인 점검용)에는 안전하게 유지한다 — 순수
+# pip 생태계에서도 불필요한지는 미검증이라 gateway/의 기존 검증된 패턴을 그대로 따른다.
+dependencies = ["litellm[proxy]==1.93.0", "google-cloud-aiplatform"]
+
+[tool.uv]
+# 환경 전용 프로젝트(빌드 대상 아님) — Cloud Build는 Dockerfile을 직접 쓰므로 이 uv 프로젝트는
+# 로컬 개발자가 gateway-cloudrun/config.cloud.yaml 파싱·probe 등을 오프라인 점검할 때만 필요하다.
+package = false

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+uv.lock
+pyproject.toml
+.python-version
+README.md
+scripts/
+config.yaml
+config.prod.yaml
+.gitignore
