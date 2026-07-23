@@ -65,6 +65,13 @@ deploy-dev:
   script:
     - echo $DEV_SERVICE_ACCOUNT_KEY > /tmp/sa-key.json
     - gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+    # TEMP DEBUG — 값은 절대 출력하지 않고 길이/프리픽스만 확인 (원인 파악 후 제거할 것)
+    - |
+      if [ -z "$DEV_DATABASE_URL" ]; then
+        echo "DEBUG: DEV_DATABASE_URL is EMPTY or not injected"
+      else
+        echo "DEBUG: DEV_DATABASE_URL length=${#DEV_DATABASE_URL} prefix=${DEV_DATABASE_URL:0:11}"
+      fi
     # LITELLM_MASTER_KEY/DATABASE_URL/LLM_API_KEY_QWEN은 소스에 두지 않고 GitLab CI/CD Variables
     # (DEV_LITELLM_MASTER_KEY 등, masked)에서만 주입한다 — Settings > CI/CD > Variables에 등록 필요.
     - gcloud run deploy $DEV_RUN_NAME_BACKEND --image=$DEV_DOCKER_REGISTRY/backend:$CI_COMMIT_SHA --region=asia-northeast3 --project=$DEV_GCP_PROJECT --set-env-vars="LITELLM_MASTER_KEY=$DEV_LITELLM_MASTER_KEY,DATABASE_URL=$DEV_DATABASE_URL,LLM_API_KEY_QWEN=$DEV_LLM_API_KEY_QWEN"
