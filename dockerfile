@@ -2,12 +2,10 @@ ARG imagepath
 
 FROM ${imagepath}/back-baseimage:latest
 
-COPY . /app
 WORKDIR /app
+COPY proxy_main.py /app/proxy_main.py
+COPY config.yaml /app/config.yaml
+COPY env.py /app/env.py
 
-#EXPOSE 8080
-
-## root 유저 사용을 막기 위함
-USER appuser
-
-CMD ["python3", "search.py"]
+# Cloud Run이 주입하는 $PORT를 그대로 따른다.
+CMD ["sh", "-c", "python3 /app/proxy_main.py --config /app/config.yaml --host 0.0.0.0 --port ${PORT:-80}"]

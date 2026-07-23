@@ -1,1 +1,1 @@
-Flask==3.0.1
+litellm[proxy,extra_proxy]==1.93.0
