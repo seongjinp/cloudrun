@@ -59,6 +59,36 @@ model_list:
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
+  # ── GCP Vertex AI — Gemini 3.5 Flash Lite (GA, text-only generation) ───────────
+  # 가격 확인(2026-07-24, 담당자 제공): input $0.30/1M, output $2.50/1M, cache read $0.03/1M.
+  # context_window/max_output은 3.6-flash와 동일하다고 확인받음. 공식 문서상 "Text-only
+  # generation"이라 supports_vision은 false로 둔다(3.6-flash와 달리 과잉 주장 안 함).
+  - model_name: gemini-3.5-flash-lite
+    litellm_params:
+      model: vertex_ai/gemini-3.5-flash-lite
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+    model_info:
+      display_name: "Gemini 3.5 Flash Lite"
+      description: "GCP Vertex AI · text-only"
+      context_window: 1048576
+      max_output: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000003
+      output_cost_per_token: 0.0000025
+      cache_read_input_token_cost: 0.00000003
+      max_tokens: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: false
+      supports_system_messages: true
+      supports_tool_choice: true
+
   # ── GCP Vertex AI — Gemini ────────────────────────────────────────────────────
   # claude- 프리픽스로 CLI가 effort를 자동으로 실어 보내게 하던 claude-gemini-3.6-flash는 폐기
   # (2026-07-22 PASS 기록 이후 CLI 쪽 동작이 바뀐 것으로 보임 — 2026-07-24 재실측: verbose 로그상
@@ -116,6 +146,60 @@ model_list:
     model_info:
       display_name: "Gemini 3.6 Flash (High Reasoning)"
       description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 high"
+      context_window: 1048576
+      max_output: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000015
+      output_cost_per_token: 0.0000075
+      max_tokens: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  # 서버측 고정 reasoning_effort=medium — 실체는 위 gemini-3.6-flash-high와 동일 배포, effort 값만 다름.
+  - model_name: gemini-3.6-flash-medium
+    litellm_params:
+      model: vertex_ai/gemini-3.6-flash
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "medium"
+    model_info:
+      display_name: "Gemini 3.6 Flash (Medium Reasoning)"
+      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 medium"
+      context_window: 1048576
+      max_output: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000015
+      output_cost_per_token: 0.0000075
+      max_tokens: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  # 서버측 고정 reasoning_effort=low — 실체는 위와 동일 배포, effort 값만 다름.
+  - model_name: gemini-3.6-flash-low
+    litellm_params:
+      model: vertex_ai/gemini-3.6-flash
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "low"
+    model_info:
+      display_name: "Gemini 3.6 Flash (Low Reasoning)"
+      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 low"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
