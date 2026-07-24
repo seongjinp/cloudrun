@@ -103,14 +103,15 @@ model_list:
       supports_system_messages: true
       supports_tool_choice: true
 
-  # backend·비-effort 클라이언트용 정직 이름 엔트리(서버측 고정 thinking) — 병존, 위와 동일 스펙.
+  # backend·비-effort 클라이언트용 정직 이름 엔트리 — 병존, 위와 동일 스펙.
+  # thinking 하드코딩 제거(2026-07-24 실험): CLAUDE_CODE_ALWAYS_ENABLE_EFFORT로 CLI가 진짜 이름에도
+  # effort를 실어 보내는지 테스트하기 위함. 이 엔트리로 effort 없이 호출하는 쪽은 이제 thinking 비활성.
   - model_name: gemini-3.6-flash
     litellm_params:
       model: vertex_ai/gemini-3.6-flash
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
-      thinking: { type: enabled, budget_tokens: 2048 }
     model_info:
       display_name: "Gemini 3.6 Flash"
       description: "GCP Vertex AI"
