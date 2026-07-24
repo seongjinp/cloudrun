@@ -51,8 +51,8 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
     model_info:
-      display_name: "Gemini 3.5 Flash Lite"
-      description: "GCP Vertex AI · text-only"
+      display_name: "Gemini 3.5 Lite"
+      description: "Gemini 3.5 Flash Lite"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
@@ -78,8 +78,8 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
     model_info:
-      display_name: "Gemini 3.6 Flash"
-      description: "GCP Vertex AI"
+      display_name: "Gemini 3.6"
+      description: "Gemini 3.6 Flash"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
@@ -104,8 +104,8 @@ model_list:
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "low"
     model_info:
-      display_name: "Gemini 3.6 Flash (Low Reasoning)"
-      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 low"
+      display_name: "Gemini 3.6 Low"
+      description: "Gemini 3.6 Flash Low Reasoning"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
@@ -130,8 +130,8 @@ model_list:
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "medium"
     model_info:
-      display_name: "Gemini 3.6 Flash (Medium Reasoning)"
-      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 medium"
+      display_name: "Gemini 3.6 Medium"
+      description: "Gemini 3.6 Flash Medium Reasoning"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
@@ -156,8 +156,8 @@ model_list:
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "high"
     model_info:
-      display_name: "Gemini 3.6 Flash (High Reasoning)"
-      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 high"
+      display_name: "Gemini 3.6 High"
+      description: "Gemini 3.6 Flash High Reasoning"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
