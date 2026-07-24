@@ -5,8 +5,9 @@
 # 스키마·model_info 계약은 `gateway/config.yaml`(로컬 dev) 헤더 주석이 정본 — 여기 중복하지 않는다.
 #
 # 차이점(vs config.prod.yaml):
-#   1) Gemini effort 노출: claude-gemini-3.6-flash(B안 — claude- 프리픽스로 /effort 네이티브화,
-#      Task 6 라이브 판정 PASS) + gemini-3.6-flash(정직 이름·backend·서버측 고정 thinking) 병존.
+#   1) Gemini reasoning 노출: claude- 프리픽스로 CLI에 effort를 실어 보내게 하는 B안은 2026-07-24
+#      재실측 결과 더 이상 재현 안 됨(claude-gemini-3.6-flash 폐기) — 대신 gemini-3.6-flash(기본,
+#      thinking 비활성) + gemini-3.6-flash-high(reasoning_effort 서버측 고정) 두 엔트리로 분리.
 #   2) DB 모드: DATABASE_URL은 Cloud Run env가 공급(config에 참조 불요 — litellm이 env를 직접 읽음).
 #   3) 모델 카탈로그를 backend가 게이트웨이 `/model/info` HTTP 조회로 읽을 수 있게 model_info 유지
 #      (2026-07-23 재설계 — backend는 이 파일을 직접 읽지 않는다, 스펙 D8-③).
@@ -58,11 +59,11 @@ model_list:
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
-  # ── GCP Vertex AI — Gemini (B안: claude- 프리픽스로 /effort 네이티브화) ──────────
-  # Task 6 라이브 판정 PASS(2026-07-22) — CLI가 claude- 이름에 output_config(effort)·thinking을
-  # 실어 전송하고 gemini 어댑터가 정상 수용함을 실측(effort=high→reasoning_effort='high',
-  # effort=low→'low' 가변 확인·CLI e2e 정답·400 없음). /effort low|medium|high|xhigh|max 그대로 동작.
-  # ⚠️ 감사 주의: display_name으로 실체(Gemini)를 명시 — Admin UI/spend에 Claude로 오인 방지.
+  # ── GCP Vertex AI — Gemini ────────────────────────────────────────────────────
+  # claude- 프리픽스로 CLI가 effort를 자동으로 실어 보내게 하던 claude-gemini-3.6-flash는 폐기
+  # (2026-07-22 PASS 기록 이후 CLI 쪽 동작이 바뀐 것으로 보임 — 2026-07-24 재실측: verbose 로그상
+  # thinking/reasoning_effort가 이름·effort 레벨·프롬프트 난이도 무관하게 요청에 전혀 안 실림,
+  # 동일 질문 low/high 비교도 결과 차이 없음). 대신 서버측 고정값 2종(기본/high)으로 분리.
   # gemini-3.6-flash는 litellm 비용맵에 완전히 없음(1.95.0-dev+에만 존재 — 가격뿐 아니라 max_tokens·
   # supports_* capability 플래그까지 전무, 유사 등재 모델 vertex_ai/gemini-3.5-flash 스키마 대조로 확인).
   # 상위 stable 편입 시 아래 수기 블록 전체 제거 가능.
@@ -78,15 +79,15 @@ model_list:
   # gemini-3.5-flash 항목의 실제 litellm 스키마를 그대로 따름 — 3.6 고유 확장 capability는 미검증이라
   # 과잉 주장 안 함, function_calling·vision·system_messages·reasoning만 우리가 실사용으로 직접 확인한
   # 것 + 모든 현세대 Gemini의 표준 기능이라 보수적으로 신뢰).
-  - model_name: claude-gemini-3.6-flash
+  - model_name: gemini-3.6-flash
     litellm_params:
       model: vertex_ai/gemini-3.6-flash
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
     model_info:
-      display_name: "Gemini 3.6 Flash (effort 지원)"
-      description: "GCP Vertex AI · 실체=gemini-3.6-flash"
+      display_name: "Gemini 3.6 Flash"
+      description: "GCP Vertex AI"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
@@ -103,18 +104,18 @@ model_list:
       supports_system_messages: true
       supports_tool_choice: true
 
-  # backend·비-effort 클라이언트용 정직 이름 엔트리 — 병존, 위와 동일 스펙.
-  # thinking 하드코딩 제거(2026-07-24 실험): CLAUDE_CODE_ALWAYS_ENABLE_EFFORT로 CLI가 진짜 이름에도
-  # effort를 실어 보내는지 테스트하기 위함. 이 엔트리로 effort 없이 호출하는 쪽은 이제 thinking 비활성.
-  - model_name: gemini-3.6-flash
+  # 서버측 고정 reasoning_effort=high — thinking budget_tokens 대신 litellm의 reasoning_effort
+  # 매핑을 사용(실체는 위 gemini-3.6-flash와 동일 vertex_ai/gemini-3.6-flash 배포).
+  - model_name: gemini-3.6-flash-high
     litellm_params:
       model: vertex_ai/gemini-3.6-flash
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "high"
     model_info:
-      display_name: "Gemini 3.6 Flash"
-      description: "GCP Vertex AI"
+      display_name: "Gemini 3.6 Flash (High Reasoning)"
+      description: "GCP Vertex AI · 실체=gemini-3.6-flash, reasoning_effort 고정 high"
       context_window: 1048576
       max_output: 65536
       strip_leading_reasoning: false
