@@ -22,11 +22,13 @@ model_list:
       model: vertex_ai/claude-sonnet-5
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
+      max_tokens: 128000
     model_info:
       display_name: "Claude Sonnet 5"
       description: "GCP Vertex AI"
       context_window: 1000000
-      max_output: 128000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
@@ -35,11 +37,13 @@ model_list:
       model: vertex_ai/claude-opus-4-8
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
+      max_tokens: 128000
     model_info:
       display_name: "Claude Opus 4.8"
       description: "GCP Vertex AI"
       context_window: 1000000
-      max_output: 128000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
@@ -50,23 +54,22 @@ model_list:
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
+      max_tokens: 65536
     model_info:
       display_name: "Gemini 3.5 Lite"
       description: "Gemini 3.5 Flash Lite"
       context_window: 1048576
-      max_output: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000003
       output_cost_per_token: 0.0000025
       cache_read_input_token_cost: 0.00000003
-      max_tokens: 65536
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
       supports_function_calling: true
-      supports_vision: false
+      supports_vision: true
       supports_system_messages: true
       supports_tool_choice: true
 
@@ -77,17 +80,16 @@ model_list:
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
+      max_tokens: 65536
     model_info:
       display_name: "Gemini 3.6"
       description: "Gemini 3.6 Flash"
       context_window: 1048576
-      max_output: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
-      max_tokens: 65536
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
@@ -103,17 +105,16 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "low"
+      max_tokens: 65536
     model_info:
       display_name: "Gemini 3.6 Low"
       description: "Gemini 3.6 Flash Low Reasoning"
       context_window: 1048576
-      max_output: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
-      max_tokens: 65536
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
@@ -129,17 +130,16 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "medium"
+      max_tokens: 65536
     model_info:
       display_name: "Gemini 3.6 Medium"
       description: "Gemini 3.6 Flash Medium Reasoning"
       context_window: 1048576
-      max_output: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
-      max_tokens: 65536
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
@@ -155,17 +155,16 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "high"
+      max_tokens: 65536
     model_info:
       display_name: "Gemini 3.6 High"
       description: "Gemini 3.6 Flash High Reasoning"
       context_window: 1048576
-      max_output: 65536
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
-      max_tokens: 65536
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
