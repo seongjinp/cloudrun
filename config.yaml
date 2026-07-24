@@ -134,6 +134,9 @@ model_list:
 litellm_settings:
   drop_params: true
   telemetry: false
+  # 임시 디버그(2026-07-24): effort별 thinking.budget_tokens가 Vertex로 실제 다르게 나가는지 원본
+  # 요청/응답 확인용 — 확인 끝나면 되돌릴 것(프롬프트 내용까지 로그에 찍힘).
+  set_verbose: true
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
