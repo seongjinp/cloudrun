@@ -1,1 +1,6 @@
 litellm[proxy]==1.93.0
+# Vertex AI 인증(google.auth)에 필요 — litellm[proxy]에는 포함되지 않고
+# litellm 자체 "google"/"proxy-runtime" extra로 분리되어 있음. 없으면
+# vertex_ai/* 호출(Gemini, Claude on Vertex 전부) 시 auth 단계에서
+# `ModuleNotFoundError: No module named 'google'` 500 에러 발생.
+google-cloud-aiplatform>=1.133.0,<2.0
