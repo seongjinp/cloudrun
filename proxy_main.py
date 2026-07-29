@@ -307,12 +307,24 @@ def _register_gemini_3_6_flash_reasoning_support() -> None:
     reasoning_effort 설정에도 불구하고 Vertex로 나가는 최종 optional_params에 thinkingConfig가
     전혀 없었음). config.yaml의 gemini-3.6-flash(-low/-medium/-high) 엔트리가 이미 갖고 있는
     reasoning_effort/supports_reasoning 설정은 이 레지스트리 게이트를 통과해야 실제 적용된다.
-    litellm 1.95.0-dev3+엔 이 모델이 supports_reasoning=True로 정식 등재돼 있음(직접 확인) —
-    핀을 그 이상으로 올리면 이 패치는 제거 가능."""
+
+    두 번째(진짜) 게이트 — `litellm.model_cost`에만 넣으면 안 된다(1차 배포로 실측): 실제
+    `reasoning_effort`→`thinkingConfig` 변환은 `get_optional_params`가
+    `custom_llm_provider == "vertex_ai" and model in litellm.vertex_chat_models`일 때만
+    `VertexGeminiConfig().map_openai_params()`로 분기해서 실행된다(litellm/utils.py). 이
+    `vertex_chat_models` 집합은 `model_cost` 딕셔너리 자체가 아니라, `register_model()`이
+    엔트리의 `litellm_provider`가 정확히 문자열 `"vertex_ai-chat-models"`(하이픈 포함 — 요청의
+    `custom_llm_provider="vertex_ai"`와 다른 내부 분류 문자열)일 때 별도로 채우는 부수효과라
+    `model_cost`를 직접 몽키패치해도 이 집합엔 반영되지 않는다. 그래서 model_cost 갱신 뒤
+    `vertex_chat_models`에도 모델명을 직접 추가해야 한다(로컬 재현: 이걸 빠뜨리면 supports_reasoning
+    은 True인데도 최종 optional_params엔 thinkingConfig가 여전히 없음 — 추가하면 정상 생성 확인).
+    litellm 1.95.0-dev3+엔 이 모델이 두 레지스트리 모두에 정식 등재돼 있음(직접 확인) — 핀을 그
+    이상으로 올리면 이 패치는 제거 가능."""
     import litellm
 
     for key in ("vertex_ai/gemini-3.6-flash", "gemini/gemini-3.6-flash", "gemini-3.6-flash"):
         litellm.model_cost.setdefault(key, {}).update(_GEMINI_3_6_FLASH_COST_ENTRY)
+        litellm.vertex_chat_models.add(key)
 
 
 def _apply_patches() -> None:
