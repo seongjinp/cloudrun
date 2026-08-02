@@ -33,6 +33,7 @@ from __future__ import annotations
 import env  # noqa: F401 — 순서 필수: litellm이 import되기 전에 os.environ을 채운다(env.py 참고).
 
 import contextvars
+import os
 
 # 이 요청의 유효 도구 이름 집합(openai tools[].function.name) — transform_request 패치가 요청마다
 # set하고, 같은 요청 task에서 만들어지는 스트림 필터가 스냅샷한다(task-로컬이라 동시 요청 간 누수 0;
@@ -403,6 +404,34 @@ def _apply_patches() -> None:
 
         adapter.translate_anthropic_messages_to_openai = _patched_translate
         adapter._midconv_system_guard = True
+
+    # ④ Vertex Gemini 사고 요약 억제(GATEWAY_SUPPRESS_THOUGHTS, 기본 1 — env.py).
+    # thinkingConfig에 includeThoughts=False를 강제한다: 사고는 켠 채(level/budget 유지) 사고 요약
+    # 파트만 생성하지 않는다. litellm 표준 파라미터로는 이 조합을 표현할 수 없다 —
+    # includeThoughts=False는 thinking이 꺼진 경우에만 나온다(_map_thinking_param 계열).
+    #
+    # 근거(실측 A/B, gemini-3.6-flash 18턴 × 2 arm): Gemini가 thinking의 `thought` 플래그를 간헐
+    # 누락해 추론이 답변 채널로 새는데(하류에 복원 정보 없음), 억제는 **생성 단계**에서 일어나므로
+    # mislabel될 대상 자체가 사라진다. 유출 4/18편 → 0/18편, 답변 길이 중앙값 832→826자(무변화),
+    # 배달 실패·깨짐 0 유지. 대가: 사고 파트 0 → 소비자의 사고 타임라인 표시가 사라진다(수용됨).
+    # 롤백은 서비스 env `GATEWAY_SUPPRESS_THOUGHTS=0`(재빌드 불필요).
+    if os.environ.get("GATEWAY_SUPPRESS_THOUGHTS", "1") == "1":
+        from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
+            VertexGeminiConfig,
+        )
+
+        if not getattr(VertexGeminiConfig, "_suppress_thoughts_guard", False):
+            _orig_map = VertexGeminiConfig.map_openai_params
+
+            def _patched_map(self, non_default_params, optional_params, model, drop_params):
+                out = _orig_map(self, non_default_params, optional_params, model, drop_params)
+                cfg = out.get("thinkingConfig") if isinstance(out, dict) else None
+                if isinstance(cfg, dict):
+                    cfg["includeThoughts"] = False
+                return out
+
+            VertexGeminiConfig.map_openai_params = _patched_map
+            VertexGeminiConfig._suppress_thoughts_guard = True
 
 
 def main() -> None:
