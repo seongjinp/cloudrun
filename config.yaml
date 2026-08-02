@@ -11,51 +11,47 @@
 #   reasoning_level     [variant 필수] 이 엔트리의 수준. family가 low/medium/high를 정확히 다 덮어야 한다.
 #   reasoning_levels    [cli_effort 필수] 지원 수준 목록.
 #   ⚠ 옛 `description` 키는 제거됐다 — picker 설명 문구의 단일 출처는 axagent admin > 모델 탭(DB)다.
+#
+# **엔트리 순서 = picker 표시 순서다**(backend가 카탈로그 응답 순서를 그대로 쓴다).
 model_list:
-  # ── GCP Vertex AI — Claude 2종(수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─────────
-  - model_name: claude-sonnet-5
+  # ── 사내 vLLM(prod 타겟) — Cloud Run에서는 사내망에 못 닿아 공개 NVIDIA 서빙으로 등록 ────────
+  # 운영 게이트웨이(사내)는 vLLM을 직접 보지만 Cloud Run은 VPC 내부 IP에 도달할 수 없다. picker에
+  # prod 기본 모델이 보여야 하므로 같은 모델의 공개 서빙으로 등록한다 — Cloud Run env에
+  # LLM_API_KEY_NVIDIA_QWEN을 넣으면 dev에서도 실제 호출되고, 없으면 인증 오류로 빠르게 실패한다.
+  # 추론 수준 미지원(reasoning_* 없음 — NVIDIA qwen 서빙의 thinking은 어댑터 결함으로 비활성 유지).
+  - model_name: qwen-3.5
     litellm_params:
-      model: vertex_ai/claude-sonnet-5
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      max_tokens: 128000
+      model: hosted_vllm/qwen/qwen3.5-122b-a10b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/LLM_API_KEY_NVIDIA_QWEN
+      additional_drop_params: ["output_config", "context_management"]
+      max_tokens: 16384
     model_info:
-      family_label: "Claude Sonnet 5"
-      reasoning_transport: cli_effort
-      reasoning_levels: [low, medium, high]
-      context_window: 1000000
-      max_input_tokens: 1000000
-      max_output_tokens: 128000
+      family_label: "Qwen 3.5"
+      context_window: 262144
+      max_input_tokens: 262144
+      max_output_tokens: 16384
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
-  - model_name: claude-opus-4-8
-    litellm_params:
-      model: vertex_ai/claude-opus-4-8
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      max_tokens: 128000
-    model_info:
-      family_label: "Claude Opus 4.8"
-      reasoning_transport: cli_effort
-      reasoning_levels: [low, medium, high]
-      context_window: 1000000
-      max_input_tokens: 1000000
-      max_output_tokens: 128000
-      compaction_ratio: 0.8
-      strip_leading_reasoning: false
-
-  # ── GCP Vertex AI — Gemini 3.5 Flash Lite (GA, text-only generation) ───────────
-  - model_name: gemini-3.5-flash-lite
+  # ── GCP Vertex AI — Gemini 3.5 Flash Lite (한 family의 세 변형) ───────────────────────────
+  # 3.5 Flash-Lite도 thinking_level을 지원한다(Vertex 공식 문서 — 기본이 minimal이라 무지정이면
+  # 사고가 거의 없다). 수준은 반드시 **config의 litellm_params.reasoning_effort**로 박는다:
+  # 요청 파라미터로 넘기면 litellm 모델카드에 없는 모델이라 조용히 드롭된다(실측 — 요청으로 low/high를
+  # 줘도 reasoning_tokens 0, config에 박힌 gemini-3.6-flash는 low 1630 → high 4528로 스케일).
+  - model_name: gemini-3.5-flash-lite-low
     litellm_params:
       model: vertex_ai/gemini-3.5-flash-lite
       vertex_project: os.environ/VERTEX_AI_PROJECT
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "low"
       max_tokens: 65536
     model_info:
-      # family 생략 = 자기 자신이 family. reasoning_* 없음 = 추론 수준 미지원(dev eval 대리 모델).
+      family: gemini-3.5-flash-lite
       family_label: "Gemini 3.5 Lite"
+      reasoning_transport: variant
+      reasoning_level: low
       context_window: 1048576
       max_input_tokens: 1048576
       max_output_tokens: 65536
@@ -71,12 +67,65 @@ model_list:
       supports_system_messages: true
       supports_tool_choice: true
 
-  # ── GCP Vertex AI — Gemini ────────────────────────────────────────────────────
-  # 아래 3엔트리는 **한 family(gemini-3.6-flash)의 세 변형**이다 — picker에는 "Gemini 3.6 Flash"
-  # 한 줄로 뜨고 low/medium/high는 추론 수준 서브메뉴가 된다.
-  # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex의 gemini-3.6-flash 기본 thinkingLevel이
-  # medium이라 -medium과 동일 동작이다(2026-08-02 실측: 무지정 722토큰 vs medium 790토큰, 같은
-  # 프롬프트·같은 정답). 수준은 -low/-medium/-high로만 노출한다.
+  - model_name: gemini-3.5-flash-lite-medium
+    litellm_params:
+      model: vertex_ai/gemini-3.5-flash-lite
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "medium"
+      max_tokens: 65536
+    model_info:
+      family: gemini-3.5-flash-lite
+      family_label: "Gemini 3.5 Lite"
+      reasoning_transport: variant
+      reasoning_level: medium
+      context_window: 1048576
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000003
+      output_cost_per_token: 0.0000025
+      cache_read_input_token_cost: 0.00000003
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  - model_name: gemini-3.5-flash-lite-high
+    litellm_params:
+      model: vertex_ai/gemini-3.5-flash-lite
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "high"
+      max_tokens: 65536
+    model_info:
+      family: gemini-3.5-flash-lite
+      family_label: "Gemini 3.5 Lite"
+      reasoning_transport: variant
+      reasoning_level: high
+      context_window: 1048576
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000003
+      output_cost_per_token: 0.0000025
+      cache_read_input_token_cost: 0.00000003
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  # ── GCP Vertex AI — Gemini 3.6 Flash (한 family의 세 변형) ────────────────────────────────
+  # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex 기본 thinkingLevel이 medium이라 -medium과
+  # 동일 동작이다(실측: 무지정 722토큰 vs medium 790토큰, 같은 프롬프트·같은 정답).
   - model_name: gemini-3.6-flash-low
     litellm_params:
       model: vertex_ai/gemini-3.6-flash
@@ -158,6 +207,39 @@ model_list:
       supports_vision: true
       supports_system_messages: true
       supports_tool_choice: true
+
+  # ── GCP Vertex AI — Claude 2종(수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─────────
+  - model_name: claude-sonnet-5
+    litellm_params:
+      model: vertex_ai/claude-sonnet-5
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      max_tokens: 128000
+    model_info:
+      family_label: "Claude Sonnet 5"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
+      context_window: 1000000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
+      compaction_ratio: 0.8
+      strip_leading_reasoning: false
+
+  - model_name: claude-opus-4-8
+    litellm_params:
+      model: vertex_ai/claude-opus-4-8
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      max_tokens: 128000
+    model_info:
+      family_label: "Claude Opus 4.8"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
+      context_window: 1000000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
+      compaction_ratio: 0.8
+      strip_leading_reasoning: false
 
 litellm_settings:
   drop_params: true
