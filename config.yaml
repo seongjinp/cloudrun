@@ -46,6 +46,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "low"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.5-flash-lite
@@ -74,6 +78,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "medium"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.5-flash-lite
@@ -102,6 +110,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "high"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.5-flash-lite
@@ -133,6 +145,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "low"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.6-flash
@@ -160,6 +176,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "medium"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.6-flash
@@ -188,6 +208,10 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       additional_drop_params: ["output_config", "context_management"]
       reasoning_effort: "high"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
       max_tokens: 65536
     model_info:
       family: gemini-3.6-flash
