@@ -58,31 +58,9 @@ model_list:
       supports_tool_choice: true
 
   # ── GCP Vertex AI — Gemini ────────────────────────────────────────────────────
-  - model_name: gemini-3.6-flash
-    litellm_params:
-      model: vertex_ai/gemini-3.6-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      max_tokens: 65536
-    model_info:
-      display_name: "Gemini 3.6"
-      description: "Gemini 3.6 Flash"
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-      default: true
-
+  # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex의 gemini-3.6-flash 기본 thinkingLevel이
+  # medium이라 -medium과 동일 동작이다(2026-08-02 실측: 무지정 722토큰 vs medium 790토큰, 같은
+  # 프롬프트·같은 정답). 수준은 -low/-medium/-high로만 노출한다.
   - model_name: gemini-3.6-flash-low
     litellm_params:
       model: vertex_ai/gemini-3.6-flash
@@ -132,6 +110,7 @@ model_list:
       supports_vision: true
       supports_system_messages: true
       supports_tool_choice: true
+      default: true
 
   - model_name: gemini-3.6-flash-high
     litellm_params:
