@@ -1,6 +1,18 @@
 # gateway-cloudrun/config.yaml — GCP Cloud Run 배포용 모델 config
+#
+# model_info 자기선언 계약(2026-08-02 axagent 2축 재설계 — 정본은 axagent `gateway/config.yaml` 헤더):
+#   family              이 엔트리가 속한 **제품 모델**(picker 항목·권한 주체·로그 차원). 생략 시
+#                       model_name 자신이 family다. 여러 엔트리가 같은 family를 선언하면 picker에
+#                       한 줄로 접히고 그 차이가 추론 수준이 된다. model_name은 전송 주소일 뿐이다.
+#   family_label        picker/admin 표시명. 같은 family끼리 같은 값이어야 한다(불일치 = fail-loud).
+#   reasoning_transport variant(수준별 엔트리 + reasoning_effort) | cli_effort(엔트리 1개 + CLI --effort)
+#                       생략 = 추론 수준 미지원. claude CLI는 --effort를 claude-* 모델명에만 실으므로
+#                       비-claude 모델은 variant가 유일한 경로다.
+#   reasoning_level     [variant 필수] 이 엔트리의 수준. family가 low/medium/high를 정확히 다 덮어야 한다.
+#   reasoning_levels    [cli_effort 필수] 지원 수준 목록.
+#   ⚠ 옛 `description` 키는 제거됐다 — picker 설명 문구의 단일 출처는 axagent admin > 모델 탭(DB)다.
 model_list:
-  # ── GCP Vertex AI — Claude 2종(effort는 CLI 네이티브, 추가 처리 불요) ─────────
+  # ── GCP Vertex AI — Claude 2종(수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─────────
   - model_name: claude-sonnet-5
     litellm_params:
       model: vertex_ai/claude-sonnet-5
@@ -8,8 +20,9 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       max_tokens: 128000
     model_info:
-      display_name: "Claude Sonnet 5"
-      description: "GCP Vertex AI"
+      family_label: "Claude Sonnet 5"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
       context_window: 1000000
       max_input_tokens: 1000000
       max_output_tokens: 128000
@@ -23,8 +36,9 @@ model_list:
       vertex_location: os.environ/VERTEX_AI_LOCATION
       max_tokens: 128000
     model_info:
-      display_name: "Claude Opus 4.8"
-      description: "GCP Vertex AI"
+      family_label: "Claude Opus 4.8"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
       context_window: 1000000
       max_input_tokens: 1000000
       max_output_tokens: 128000
@@ -40,8 +54,8 @@ model_list:
       additional_drop_params: ["output_config", "context_management"]
       max_tokens: 65536
     model_info:
-      display_name: "Gemini 3.5 Lite"
-      description: "Gemini 3.5 Flash Lite"
+      # family 생략 = 자기 자신이 family. reasoning_* 없음 = 추론 수준 미지원(dev eval 대리 모델).
+      family_label: "Gemini 3.5 Lite"
       context_window: 1048576
       max_input_tokens: 1048576
       max_output_tokens: 65536
@@ -58,6 +72,8 @@ model_list:
       supports_tool_choice: true
 
   # ── GCP Vertex AI — Gemini ────────────────────────────────────────────────────
+  # 아래 3엔트리는 **한 family(gemini-3.6-flash)의 세 변형**이다 — picker에는 "Gemini 3.6 Flash"
+  # 한 줄로 뜨고 low/medium/high는 추론 수준 서브메뉴가 된다.
   # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex의 gemini-3.6-flash 기본 thinkingLevel이
   # medium이라 -medium과 동일 동작이다(2026-08-02 실측: 무지정 722토큰 vs medium 790토큰, 같은
   # 프롬프트·같은 정답). 수준은 -low/-medium/-high로만 노출한다.
@@ -70,8 +86,10 @@ model_list:
       reasoning_effort: "low"
       max_tokens: 65536
     model_info:
-      display_name: "Gemini 3.6 Low"
-      description: "Gemini 3.6 Flash Low Reasoning"
+      family: gemini-3.6-flash
+      family_label: "Gemini 3.6 Flash"
+      reasoning_transport: variant
+      reasoning_level: low
       context_window: 1048576
       max_input_tokens: 1048576
       max_output_tokens: 65536
@@ -95,8 +113,10 @@ model_list:
       reasoning_effort: "medium"
       max_tokens: 65536
     model_info:
-      display_name: "Gemini 3.6 Medium"
-      description: "Gemini 3.6 Flash Medium Reasoning"
+      family: gemini-3.6-flash
+      family_label: "Gemini 3.6 Flash"
+      reasoning_transport: variant
+      reasoning_level: medium
       context_window: 1048576
       max_input_tokens: 1048576
       max_output_tokens: 65536
@@ -121,8 +141,10 @@ model_list:
       reasoning_effort: "high"
       max_tokens: 65536
     model_info:
-      display_name: "Gemini 3.6 High"
-      description: "Gemini 3.6 Flash High Reasoning"
+      family: gemini-3.6-flash
+      family_label: "Gemini 3.6 Flash"
+      reasoning_transport: variant
+      reasoning_level: high
       context_window: 1048576
       max_input_tokens: 1048576
       max_output_tokens: 65536

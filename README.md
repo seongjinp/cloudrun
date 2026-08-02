@@ -36,6 +36,12 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
   docstring 참고.
 - `config.yaml` — 모델 카탈로그(vertex_ai Claude/Gemini). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
+  **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
+  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 6엔트리 = 제품 모델 4종
+  (`gemini-3.6-flash`의 low/medium/high 3변형이 한 줄). 자기선언 필드(`family`·`family_label`·
+  `reasoning_transport`·`reasoning_level(s)`) 계약은 파일 상단 주석에 있다. 이 파일은 **배포의
+  기술적 사실만** 소유하고, 접근 권한과 피커 설명 문구는 axagent admin > 모델 탭(DB)이 소유한다
+  (그래서 옛 `description` 키는 제거됐다).
 - `env.py` — 비민감 기본값(GCP 프로젝트·리전·로그 경로 등)만 채우는 폴백. `LITELLM_MASTER_KEY`
   같은 민감값은 여기 두지 않고 Cloud Run 콘솔(또는 `gcloud run deploy --set-env-vars`/Secret
   Manager)로 직접 주입한다.
