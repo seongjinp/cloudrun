@@ -3,7 +3,8 @@
 
 `Dockerfile`의 CMD가 바닐라 `litellm --config ...` 대신 `python proxy_main.py --config ...`로
 기동한다. 프록시를 띄우기 전에 몽키패치 4건을 적용한다(①~③은 qwen 실측 트리거 기반, ④는
-gemini-3.6-flash reasoning 실측 기반 — 아래 각 클래스/함수 docstring):
+gemini-3.6-flash reasoning 실측 기반, 3.7-flash 추가 시 동일 근거로 확장 — 아래 각 클래스/함수
+docstring):
 
 1. **도구 이름 정규화**(`_ToolNameNormalizeFilter`) — 약한 모델이 도구 정식명 대신 축약명으로
    호출해 CLI가 "No such tool available"로 데드엔드에 빠지는 것을 게이트웨이에서 교정한다.
@@ -14,11 +15,13 @@ gemini-3.6-flash reasoning 실측 기반 — 아래 각 클래스/함수 docstri
 3. **mid-conversation system 재작성**(`_midconv_system_to_user`) — litellm의 어댑터 변환
    루프가 user/assistant 외 role을 무언 드롭해 CLI의 스킬 목록이 hosted_vllm 백엔드에
    도달하지 못하는 것을 우회한다.
-4. **gemini-3.6-flash reasoning 레지스트리 등록**(`_register_gemini_3_6_flash_reasoning_support`)
-   — litellm 1.93.0 내장 model_cost에 이 모델이 없어 `supports_reasoning()`이 False를 반환,
-   `reasoning_effort`/`thinking`이 `drop_params`로 조용히 drop되던 것을 우회(2026-07-29 라이브
-   진단 — config.yaml에 reasoning_effort를 걸어도 Vertex로 나가는 최종 요청에 전혀 안 실리고
-   있었음을 gcloud logging으로 직접 확인). litellm 1.95.0-dev+에 정식 등재되면 제거 가능.
+4. **gemini flash reasoning 레지스트리 등록**(`_register_gemini_flash_reasoning_support`)
+   — litellm 1.93.0 내장 model_cost에 gemini-3.6-flash/gemini-3.7-flash가 없어
+   `supports_reasoning()`이 False를 반환, `reasoning_effort`/`thinking`이 `drop_params`로
+   조용히 drop되던 것을 우회(2026-07-29 라이브 진단 — config.yaml에 reasoning_effort를 걸어도
+   Vertex로 나가는 최종 요청에 전혀 안 실리고 있었음을 gcloud logging으로 직접 확인, gemini-3.6-flash
+   기준). 각 모델은 litellm에 정식 등재되는 대로(3.6은 1.95.0-dev+) `_GEMINI_FLASH_REASONING_MODELS`
+   에서 빼면 된다.
 
 litellm 핀(1.93.0)이 고정이라 대상 클래스/메서드가 안정적이며, 핀을 올릴 때 재검증 대상이다
 (핀은 `Dockerfile`의 베이스 이미지 태그·`pyproject.toml`의 dependencies가 단일 출처 — 여기 숫자를
@@ -287,7 +290,7 @@ def _midconv_system_to_user(messages):
     return out
 
 
-_GEMINI_3_6_FLASH_COST_ENTRY = {
+_GEMINI_FLASH_COST_ENTRY = {
     "max_input_tokens": 1048576,
     "max_output_tokens": 65536,
     "litellm_provider": "vertex_ai",
@@ -299,15 +302,19 @@ _GEMINI_3_6_FLASH_COST_ENTRY = {
     "supports_tool_choice": True,
 }
 
+# litellm 정식 등재 전인 gemini flash 계열 — 등재되는 대로 여기서 빼면 된다(gemini-3.6-flash는
+# 1.95.0-dev3+에 정식 등재 확인됨; 3.7-flash는 3.6과 동일 근거로 선제 등록).
+_GEMINI_FLASH_REASONING_MODELS = ("gemini-3.6-flash", "gemini-3.7-flash")
 
-def _register_gemini_3_6_flash_reasoning_support() -> None:
-    """litellm 1.93.0 내장 model_cost 레지스트리에 vertex_ai/gemini-3.6-flash가 없어
-    `supports_reasoning()`이 False를 반환 → `get_supported_openai_params`가 `reasoning_effort`/
+
+def _register_gemini_flash_reasoning_support() -> None:
+    """litellm 1.93.0 내장 model_cost 레지스트리에 `_GEMINI_FLASH_REASONING_MODELS`의 모델들이
+    없어 `supports_reasoning()`이 False를 반환 → `get_supported_openai_params`가 `reasoning_effort`/
     `thinking`을 지원 목록에서 빼먹고 전역 `drop_params: true`(config.yaml)가 이를 조용히
-    drop하던 문제 우회(2026-07-29 gcloud logging 라이브 진단으로 확인 — config.yaml의
-    reasoning_effort 설정에도 불구하고 Vertex로 나가는 최종 optional_params에 thinkingConfig가
-    전혀 없었음). config.yaml의 gemini-3.6-flash(-low/-medium/-high) 엔트리가 이미 갖고 있는
-    reasoning_effort/supports_reasoning 설정은 이 레지스트리 게이트를 통과해야 실제 적용된다.
+    drop하던 문제 우회(2026-07-29 gcloud logging 라이브 진단으로 확인, gemini-3.6-flash 기준 —
+    config.yaml의 reasoning_effort 설정에도 불구하고 Vertex로 나가는 최종 optional_params에
+    thinkingConfig가 전혀 없었음). config.yaml의 각 모델 (-low/-medium/-high) 엔트리가 이미 갖고
+    있는 reasoning_effort/supports_reasoning 설정은 이 레지스트리 게이트를 통과해야 실제 적용된다.
 
     두 번째(진짜) 게이트 — `litellm.model_cost`에만 넣으면 안 된다(1차 배포로 실측): 실제
     `reasoning_effort`→`thinkingConfig` 변환은 `get_optional_params`가
@@ -319,13 +326,14 @@ def _register_gemini_3_6_flash_reasoning_support() -> None:
     `model_cost`를 직접 몽키패치해도 이 집합엔 반영되지 않는다. 그래서 model_cost 갱신 뒤
     `vertex_chat_models`에도 모델명을 직접 추가해야 한다(로컬 재현: 이걸 빠뜨리면 supports_reasoning
     은 True인데도 최종 optional_params엔 thinkingConfig가 여전히 없음 — 추가하면 정상 생성 확인).
-    litellm 1.95.0-dev3+엔 이 모델이 두 레지스트리 모두에 정식 등재돼 있음(직접 확인) — 핀을 그
-    이상으로 올리면 이 패치는 제거 가능."""
+    litellm 1.95.0-dev3+엔 gemini-3.6-flash가 두 레지스트리 모두에 정식 등재돼 있음(직접 확인) —
+    핀을 그 이상으로 올리면 해당 모델은 `_GEMINI_FLASH_REASONING_MODELS`에서 빼면 된다."""
     import litellm
 
-    for key in ("vertex_ai/gemini-3.6-flash", "gemini/gemini-3.6-flash", "gemini-3.6-flash"):
-        litellm.model_cost.setdefault(key, {}).update(_GEMINI_3_6_FLASH_COST_ENTRY)
-        litellm.vertex_chat_models.add(key)
+    for model in _GEMINI_FLASH_REASONING_MODELS:
+        for key in (f"vertex_ai/{model}", f"gemini/{model}", model):
+            litellm.model_cost.setdefault(key, {}).update(_GEMINI_FLASH_COST_ENTRY)
+            litellm.vertex_chat_models.add(key)
 
 
 def _apply_patches() -> None:
@@ -333,13 +341,13 @@ def _apply_patches() -> None:
     tool-인자 무결성 필터 + tool-이름 정규화 필터를 끼운다. ② 어댑터 메시지 변환 앞단에서
     mid-conversation system을 user+system-reminder로 재작성한다(스킬 목록 등 — litellm 변환 루프의
     무언 드롭 우회). ③ HostedVLLMChatConfig.transform_request를 감싸 이 요청의 tools 이름 집합을
-    contextvar에 채운다(이름 정규화 재료 — R3-F1). ④ litellm.model_cost에 gemini-3.6-flash
+    contextvar에 채운다(이름 정규화 재료 — R3-F1). ④ litellm.model_cost에 gemini flash 계열(3.6/3.7)
     reasoning 지원 플래그를 등록한다(레지스트리 부재로 인한 drop_params 우회 —
-    `_register_gemini_3_6_flash_reasoning_support` 참고). litellm 핀(1.93.0) 고정 전제 — 핀을
+    `_register_gemini_flash_reasoning_support` 참고). litellm 핀(1.93.0) 고정 전제 — 핀을
     올릴 때 패치 전부 재검증 대상이다(업스트림이 고치면 ②·④ 제거). (참고: fake-stream 강제 패치는
     2026-07-12 검증 후 원복 — 사용자 결정으로 운영 미채택. 필요 시 git history `c5fd5926`에서
     복원.)"""
-    _register_gemini_3_6_flash_reasoning_support()
+    _register_gemini_flash_reasoning_support()
 
     from litellm.llms.anthropic.experimental_pass_through.adapters import (
         streaming_iterator as _si,
