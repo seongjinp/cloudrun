@@ -18,8 +18,11 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
   `STORE_MODEL_IN_DB=False`라 `DATABASE_URL` 없이도 프록시가 기동한다. 나중에 필요해지면
   `requirements.txt`에 `extra_proxy`를 다시 추가하고 Postgres(Cloud SQL 등)를 준비하면 된다.
 - **CI 설정 제거**: `.gitlab-ci.yml`은 GitHub 저장소를 Cloud Run에 직접 연동하는 이 구성에서는
-  전혀 읽히지 않는 사내 GitLab 전용 파일이라 삭제. 배포는 Cloud Run의 "리포지토리에서 지속적
-  배포" 기능(Cloud Build가 push마다 자동으로 Dockerfile 빌드·배포)에 맡긴다.
+  전혀 읽히지 않는 사내 GitLab 전용 파일이라 삭제. 빌드는 Cloud Run의 "리포지토리에서 지속적
+  배포" 트리거(Cloud Build가 push마다 자동으로 Dockerfile 빌드·이미지 push)에 맡긴다 — 단 **실제
+  Cloud Run 배포는 자동이 아니다**(2026-08-26 실측: 이 트리거는 이미지 빌드+push까지만 하고
+  `gcloud run deploy`/리비전 갱신 스텝이 없다). push 후 새 리비전을 띄우려면 아래 "배포" 절차대로
+  수동으로 `gcloud run deploy`를 실행해야 한다.
 - **qwen 모델 제거**: `config.yaml`의 `qwen-3.5`는 사내망 전용 vLLM(`10.36.114.31`, VPC 내부
   IP)을 가리켜 개인환경에서는 도달 불가능해 제거. 대신 `gemini-3.7-flash-medium`을 기본 모델
   (`default: true`)로 지정(2026-08-26 3.6 → 3.7 전환).
@@ -61,9 +64,30 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
    - Build Type: Dockerfile, 경로는 리포 루트의 `dockerfile`(소문자 — macOS 대소문자 미구분
      파일시스템 때문에 `Dockerfile`로 못 바꿨다. 트리거 설정 화면에서 파일명을 정확히
      `dockerfile`로 지정해야 함).
+   - 이 트리거는 이미지를 빌드해 `gcr.io/<프로젝트>/github.com/seongjinp/cloudrun:<커밋 SHA>`로
+     push까지만 한다 — Cloud Run 리비전은 갱신하지 않는다(아래 "배포" 절차 참고).
 3. **Cloud Run 환경변수**
    - `LITELLM_MASTER_KEY` — 필수(콘솔의 "변수 및 보안 비밀" 또는 Secret Manager로 등록 권장).
    - `DATABASE_URL`, `LLM_API_KEY_QWEN`은 더 이상 필요 없음(각각 DB 미사용·qwen 모델 제거).
+
+## 배포(코드/config 변경 후 매번 수동)
+
+`private-dev`에 push하면 Cloud Build가 이미지를 빌드해 Container Registry에 push하지만, 그
+이미지로 Cloud Run 리비전을 실제로 띄우는 건 별도 수동 단계다:
+
+```sh
+# 1. push된 커밋의 Cloud Build가 성공했는지 확인 (이미지 태그 = 커밋 SHA)
+gcloud builds list --limit=3 --sort-by=~createTime
+
+# 2. 그 이미지로 새 리비전 배포
+gcloud run deploy cloudrun \
+  --image=gcr.io/project-b70f2ac9-1f7b-4489-bd6/github.com/seongjinp/cloudrun:<커밋 SHA> \
+  --region=europe-west1 \
+  --platform=managed
+```
+
+`--image`만 지정하면 기존 리비전의 환경변수·리소스 설정은 그대로 유지된다. 배포 후
+`gcloud run services describe cloudrun --region=europe-west1`로 반영된 이미지를 확인할 것.
 
 ## litellm 버전 업그레이드 시 체크리스트
 
