@@ -31,7 +31,7 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 
 ## 구조
 
-- `requirements.txt` — `litellm[proxy]==1.93.0` 단일 의존성.
+- `requirements.txt` — `litellm[proxy]==1.98.0` 단일 의존성.
 - `dockerfile` — `python:3.12.11-slim` 위에 의존성 설치 + `proxy_main.py`/`config.yaml`/`env.py`를
   얹는 단일 스테이지 앱 이미지. 비루트 사용자(`appuser`)로 기동.
 - `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 몽키패치(도구 이름 정규화 등, 사내 vLLM 연동

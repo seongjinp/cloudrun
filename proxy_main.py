@@ -16,14 +16,14 @@ docstring):
    루프가 user/assistant 외 role을 무언 드롭해 CLI의 스킬 목록이 hosted_vllm 백엔드에
    도달하지 못하는 것을 우회한다.
 4. **gemini flash reasoning 레지스트리 등록**(`_register_gemini_flash_reasoning_support`)
-   — litellm 1.93.0 내장 model_cost에 gemini-3.6-flash/gemini-3.7-flash가 없어
+   — litellm 1.98.0은 두 모델을 model_cost에 등재하지만 `vertex_chat_models`에는 넣지 않아
    `supports_reasoning()`이 False를 반환, `reasoning_effort`/`thinking`이 `drop_params`로
    조용히 drop되던 것을 우회(2026-07-29 라이브 진단 — config.yaml에 reasoning_effort를 걸어도
    Vertex로 나가는 최종 요청에 전혀 안 실리고 있었음을 gcloud logging으로 직접 확인, gemini-3.6-flash
    기준). 각 모델은 litellm에 정식 등재되는 대로(3.6은 1.95.0-dev+) `_GEMINI_FLASH_REASONING_MODELS`
    에서 빼면 된다.
 
-litellm 핀(1.93.0)이 고정이라 대상 클래스/메서드가 안정적이며, 핀을 올릴 때 재검증 대상이다
+litellm 핀(1.98.0)이 고정이라 대상 클래스/메서드가 안정적이며, 핀을 올릴 때 재검증 대상이다
 (핀은 `Dockerfile`의 베이스 이미지 태그·`pyproject.toml`의 dependencies가 단일 출처 — 여기 숫자를
 따로 두지 않는다).
 
@@ -253,6 +253,13 @@ def _midconv_system_to_user(messages):
     스킬 목록이 아예 도달하지 않아 Skill 자가 선택이 구조적으로 불가능했다(qwen 스킬 자가로드
     0→10 슬러그 실측).
 
+    **1.98.0에서 그 근거의 절반이 사라졌다**(2026-08-31 실측): 업스트림이
+    `_translate_midturn_system_message_to_openai`를 추가해 mid-conversation system을 더는
+    스킵하지 않는다. 다만 그것은 role·위치를 **그대로 둔다**("without changing its role or
+    position") — 아래 두 번째 문단이 말하는 「OpenAI-호환 chat template 다수가 위치 0 전용」
+    문제는 그대로다. 그래서 이 패치를 유지한다. **제거 여부는 hosted_vllm 실모델 eval이
+    판정할 문제이지 버전 올림이 결정할 일이 아니다.**
+
     user + <system-reminder> 형태를 쓰는 이유: OpenAI-호환 서빙의 chat template 다수가
     mid-conversation system을 미지원/오처리하므로(위치 0 전용), Claude Code가 리마인더에 쓰는
     검증된 형태로 낮춘다. 이 함수는 어댑터 변환 경로에서만 불리므로 anthropic passthrough
@@ -309,7 +316,7 @@ _GEMINI_FLASH_REASONING_MODELS = ("gemini-3.6-flash", "gemini-3.7-flash")
 
 
 def _register_gemini_flash_reasoning_support() -> None:
-    """litellm 1.93.0 내장 model_cost 레지스트리에 `_GEMINI_FLASH_REASONING_MODELS`의 모델들이
+    """litellm 1.98.0 내장 레지스트리에 `_GEMINI_FLASH_REASONING_MODELS`의 모델들이
     없어 `supports_reasoning()`이 False를 반환 → `get_supported_openai_params`가 `reasoning_effort`/
     `thinking`을 지원 목록에서 빼먹고 전역 `drop_params: true`(config.yaml)가 이를 조용히
     drop하던 문제 우회(2026-07-29 gcloud logging 라이브 진단으로 확인, gemini-3.6-flash 기준 —
@@ -333,7 +340,14 @@ def _register_gemini_flash_reasoning_support() -> None:
 
     for model in _GEMINI_FLASH_REASONING_MODELS:
         for key in (f"vertex_ai/{model}", f"gemini/{model}", model):
-            litellm.model_cost.setdefault(key, {}).update(_GEMINI_FLASH_COST_ENTRY)
+            # 상류가 이미 아는 필드는 덮지 않는다. litellm 1.98.0이 두 모델을 실가격과 함께
+            # 등재하면서 `litellm_provider`가 `vertex_ai-language-models`가 됐는데, 옛
+            # `.update()`는 그것을 합성값 `vertex_ai`로 덮어써 비용 귀속을 흔들었다.
+            # **진짜 게이트는 아래 `vertex_chat_models`이지 이 필드가 아니다.**
+            entry = litellm.model_cost.setdefault(key, {})
+            for field, value in _GEMINI_FLASH_COST_ENTRY.items():
+                entry.setdefault(field, value)
+            # 1.98.0에도 `vertex_chat_models`에는 없다(실측) — 이 줄이 이 패치의 존재 이유다.
             litellm.vertex_chat_models.add(key)
 
 
@@ -344,7 +358,7 @@ def _apply_patches() -> None:
     무언 드롭 우회). ③ HostedVLLMChatConfig.transform_request를 감싸 이 요청의 tools 이름 집합을
     contextvar에 채운다(이름 정규화 재료 — R3-F1). ④ litellm.model_cost에 gemini flash 계열(3.6/3.7)
     reasoning 지원 플래그를 등록한다(레지스트리 부재로 인한 drop_params 우회 —
-    `_register_gemini_flash_reasoning_support` 참고). litellm 핀(1.93.0) 고정 전제 — 핀을
+    `_register_gemini_flash_reasoning_support` 참고). litellm 핀(1.98.0) 고정 전제 — 핀을
     올릴 때 패치 전부 재검증 대상이다(업스트림이 고치면 ②·④ 제거). (참고: fake-stream 강제 패치는
     2026-07-12 검증 후 원복 — 사용자 결정으로 운영 미채택. 필요 시 git history `c5fd5926`에서
     복원.)"""
