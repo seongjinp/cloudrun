@@ -129,8 +129,24 @@ class CryptoProxyMiddleware:
         pending = bytearray()
         request_body = body
 
+        body_delivered = False
+
         async def inner_receive():
-            return {"type": "http.request", "body": request_body, "more_body": False}
+            """본문을 **한 번만** 주고, 그 뒤로는 진짜 클라이언트 이벤트를 기다린다.
+
+            매번 `http.request`를 즉시 돌려주면 안 된다 — Starlette `StreamingResponse`는
+            `listen_for_disconnect`에서 `while True: await receive()`를 도는데, 즉시 반환하면
+            그것이 **바쁜 대기**가 되어 이벤트 루프를 굶기고 `stream_response`가 영영 스케줄되지
+            않는다(실측: 스트리밍 요청이 응답 헤더조차 못 내보내고 멈췄다. 비스트리밍은 그 루프가
+            없어 멀쩡해서 유닛 테스트로는 안 잡혔다).
+
+            바깥 `receive`로 위임하면 클라이언트가 끊을 때 `http.disconnect`가 그대로 전파된다.
+            """
+            nonlocal body_delivered
+            if not body_delivered:
+                body_delivered = True
+                return {"type": "http.request", "body": request_body, "more_body": False}
+            return await receive()
 
         async def emit(payload: bytes, *, final: bool) -> None:
             offset = 0
