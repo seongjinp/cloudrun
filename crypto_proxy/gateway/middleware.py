@@ -23,10 +23,16 @@ class _ReplayGuard:
 
     봉투 안의 값을 키로 쓰면 검사가 복호 뒤로 밀려 DoS 표면이 커진다. `eph_pub`은 지켜야 할 성질
     (임시키는 정확히 한 번만 쓰인다)과도 정확히 일치한다.
+
+    **이 미들웨어에서 요청 간에 공유되는 유일한 가변 상태다.** 그래서 크기 상한이 필요하다 —
+    TTL만으로는 유입 속도에 비례해 자란다(초당 R 요청이면 R×TTL개). 상한에 닿으면 가장 오래된
+    것부터 버린다: 그러면 그 창 밖의 재전송은 통과할 수 있지만, 재전송이 얻는 것은 쿼터 소모뿐이고
+    (응답 키를 유도할 수 없다 — 설계 §5.9) 메모리 폭주는 실사용을 통째로 멈춘다.
     """
 
-    def __init__(self, ttl: float) -> None:
+    def __init__(self, ttl: float, max_entries: int = 100_000) -> None:
         self._ttl = ttl
+        self._max_entries = max_entries
         self._seen: OrderedDict[bytes, float] = OrderedDict()
 
     def check_and_record(self, eph_pub: bytes, now: float) -> bool:
@@ -35,7 +41,12 @@ class _ReplayGuard:
         if eph_pub in self._seen:
             return False
         self._seen[eph_pub] = now
+        while len(self._seen) > self._max_entries:
+            self._seen.popitem(last=False)
         return True
+
+    def __len__(self) -> int:
+        return len(self._seen)
 
 
 class CryptoProxyMiddleware:
@@ -46,13 +57,14 @@ class CryptoProxyMiddleware:
         private_keys: dict[bytes, bytes],
         policy: PathPolicy,
         replay_ttl: float = 300.0,
+        replay_max_entries: int = 100_000,
         skew: float = 120.0,
     ) -> None:
         self._app = app
         self._keys = private_keys
         self._policy = policy
         self._skew = skew
-        self._replay = _ReplayGuard(replay_ttl)
+        self._replay = _ReplayGuard(replay_ttl, replay_max_entries)
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
