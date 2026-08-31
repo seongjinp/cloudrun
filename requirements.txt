@@ -4,3 +4,7 @@ litellm[proxy]==1.93.0
 # vertex_ai/* 호출(Gemini, Claude on Vertex 전부) 시 auth 단계에서
 # `ModuleNotFoundError: No module named 'google'` 500 에러 발생.
 google-cloud-aiplatform>=1.133.0,<2.0
+
+# crypto_proxy 봉투 계층(X25519 · HKDF · AES-256-GCM). backend와 같은 하한을 쓴다 — 와이어
+# 포맷 코드가 양쪽 공용 사본이라 프리미티브 동작이 갈리면 골든 벡터가 어긋난다.
+cryptography>=49.0.0

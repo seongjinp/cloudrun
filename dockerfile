@@ -10,6 +10,8 @@ COPY requirements.txt .
 RUN pip install --upgrade --no-cache-dir -r requirements.txt
 
 COPY proxy_main.py config.yaml env.py ./
+# 봉투 계층 — axagent 정본의 사본(scripts/sync_crypto_proxy.sh가 유일한 갱신 경로).
+COPY crypto_proxy/ ./crypto_proxy/
 
 RUN useradd --create-home --uid 1000 appuser
 USER appuser

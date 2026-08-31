@@ -89,6 +89,34 @@ gcloud run deploy cloudrun \
 `--image`만 지정하면 기존 리비전의 환경변수·리소스 설정은 그대로 유지된다. 배포 후
 `gcloud run services describe cloudrun --region=europe-west1`로 반영된 이미지를 확인할 것.
 
+## 봉인 터널 (crypto_proxy)
+
+사내 운영 backend ↔ 이 게이트웨이 구간이 평문 HTTP라 보안 조직이 암호화를 권고했다. `proxy_main.py`의
+**패치 ⑤**가 litellm 앱을 통째로 봉투 미들웨어로 감싸, `POST /_crypto`로 온 봉인 요청만 복호해
+원래 scope로 재구성하고 응답을 다시 봉인해 스트리밍한다. 설계 정본은 axagent의
+`docs/superpowers/specs/2026-08-31-crypto-proxy-payload-encryption-design.md`다.
+
+**`crypto_proxy/`는 사본이다. 손으로 고치지 않는다.**
+
+```bash
+bash scripts/sync_crypto_proxy.sh     # 정본(axagent/crypto_proxy)에서 다시 복사
+```
+
+정본과 갈리면 **부팅이 거부된다** — `crypto_proxy/selftest.py`가 고정 키·고정 평문으로 봉투를 다시
+구워 골든 벡터 바이트와 대조하고, 어긋나면 `VectorMismatch`로 죽는다. 이 저장소에는 테스트 러너가
+없어서(pyproject·tests·CI 부재) 집행을 테스트가 아니라 **부팅**이 한다.
+
+**개인키가 없으면 뜨지 않는다.** `CRYPTO_PROXY_PRIVATE_KEY`(X25519 raw 32B, base64)를 Cloud Run
+서비스 env(Secret Manager)로 준다. 회전 중에는 `CRYPTO_PROXY_PRIVATE_KEY_PREV`를 함께 둘 수 있고
+`kid`로 구분되므로 시행착오가 없다. **「키가 있을 때만 봉인」 같은 조건부로 만들지 않는다** — env 한
+줄을 지우는 것만으로 조용히 평문으로 돌아가는 fail-open이 된다.
+
+`NUM_WORKERS>1`이면 워커가 별도 프로세스로 떠서 이 파일을 안 거치고 패치 ①~⑤가 전부 사라지므로,
+기동 단정이 그것도 거부한다.
+
+**최초 전환은 양쪽이 동시에 바뀌어야 한다** — 어느 쪽을 먼저 바꿔도 그 사이 모델 트래픽이 전부
+죽는다. 절차(리비전 태그 / 순차 전환)는 위 설계 §10.3이 소유한다.
+
 ## litellm 버전 업그레이드 시 체크리스트
 
 1. `requirements.txt`의 `litellm[proxy]==X.Y.Z` 갱신.

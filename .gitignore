@@ -1,3 +1,8 @@
 # scripts/add_litellm_users.py 관련 — 로컬 비밀값·실제 사용자 데이터(PII)는 git에 올리지 않는다.
 scripts/.env
 scripts/*.xlsx
+
+# Python 바이트코드 — crypto_proxy 사본을 검증·동기화할 때 생긴다. 커밋하면 dockerfile의
+# `COPY crypto_proxy/`가 이미지에 실어 나른다.
+__pycache__/
+*.py[cod]

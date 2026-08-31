@@ -37,6 +37,7 @@ import env  # noqa: F401 — 순서 필수: litellm이 import되기 전에 os.en
 
 import contextvars
 import os
+import sys
 
 # 이 요청의 유효 도구 이름 집합(openai tools[].function.name) — transform_request 패치가 요청마다
 # set하고, 같은 요청 task에서 만들어지는 스트림 필터가 스냅샷한다(task-로컬이라 동시 요청 간 누수 0;
@@ -442,8 +443,83 @@ def _apply_patches() -> None:
             VertexGeminiConfig._suppress_thoughts_guard = True
 
 
+def _effective_num_workers() -> int:
+    """실효 워커 수. 1보다 크면 워커가 **별도 프로세스**로 떠서 이 파일을 안 거치고,
+    그러면 패치 ①~⑤가 전부 조용히 사라진다. 둘 다 env로 덮어쓸 수 있다."""
+    from litellm.constants import DEFAULT_NUM_WORKERS_LITELLM_PROXY
+
+    raw = os.environ.get("NUM_WORKERS", "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            sys.exit(f"NUM_WORKERS가 정수가 아니다: {raw!r}")
+    return int(DEFAULT_NUM_WORKERS_LITELLM_PROXY)
+
+
+def _install_crypto_proxy() -> None:
+    """패치 ⑤ — litellm 앱을 **통째로** 봉투 미들웨어로 감싼다.
+
+    `add_middleware()`가 아니라 앱 자체를 감싸는 이유: `add_middleware`는 Starlette의
+    `ServerErrorMiddleware` **안쪽**에 놓여, litellm이 처리 못 한 예외로 500을 낼 때 그 본문이
+    암호화를 우회해 평문으로 나간다. 통째로 감싸면 최외곽이라 그 구멍이 닫힌다.
+
+    개인키가 없으면 **뜨지 않는다.** 평문으로 뜨는 것이 이 계층이 막으려는 상태 그 자체다.
+    """
+    import base64
+
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+    from litellm.proxy import proxy_server
+
+    from crypto_proxy import selftest
+    from crypto_proxy.gateway.middleware import CryptoProxyMiddleware
+    from crypto_proxy.gateway.policy import PathPolicy, load_litellm_routes
+    from crypto_proxy.wire.keys import derive_kid
+
+    # 사본 드리프트는 부팅 거부다 — 이 저장소에는 테스트 러너가 없어 테스트로 집행할 수 없다.
+    selftest.verify_vectors()
+
+    keys: dict[bytes, bytes] = {}
+    for var in ("CRYPTO_PROXY_PRIVATE_KEY", "CRYPTO_PROXY_PRIVATE_KEY_PREV"):
+        raw = os.environ.get(var, "").strip()
+        if not raw:
+            continue
+        try:
+            priv = base64.b64decode(raw, validate=True)
+            pub = (
+                X25519PrivateKey.from_private_bytes(priv)
+                .public_key()
+                .public_bytes(Encoding.Raw, PublicFormat.Raw)
+            )
+        except Exception:  # noqa: BLE001 — 값을 로그에 싣지 않는다. 키 자료다.
+            sys.exit(f"{var}가 X25519 raw 개인키(base64)가 아니다")
+        keys[derive_kid(pub)] = priv
+    if not keys:
+        sys.exit("CRYPTO_PROXY_PRIVATE_KEY 없음 — 평문으로 뜰 수 없다")
+
+    policy = PathPolicy(load_litellm_routes())
+    policy.assert_model_routes_present()
+    proxy_server.app = CryptoProxyMiddleware(proxy_server.app, private_keys=keys, policy=policy)
+    # kid와 개수만 찍는다. 개인키·마스터키는 찍지 않는다.
+    print(f"crypto_proxy 미들웨어 설치 — kid={sorted(k.hex() for k in keys)}", flush=True)
+
+
 def main() -> None:
     _apply_patches()
+    # **조건부로 만들지 않는다.** 「키가 있을 때만 봉인」으로 두면 env 한 줄을 지우는 것만으로
+    # 조용히 평문으로 돌아간다 — 설계 §10.3이 `enforce=false` 류 전환 플래그를 금지한 이유가
+    # 정확히 그것이다. 키가 없으면 **뜨지 않는다**(_install_crypto_proxy의 sys.exit).
+    from litellm.proxy import proxy_server
+
+    from crypto_proxy.gateway.middleware import CryptoProxyMiddleware
+
+    _install_crypto_proxy()
+    if not isinstance(proxy_server.app, CryptoProxyMiddleware):
+        sys.exit("crypto_proxy 미들웨어 미설치 — 평문으로 뜰 수 없다")
+    if _effective_num_workers() != 1:
+        sys.exit("NUM_WORKERS>1이면 패치가 워커에 실리지 않는다")
+
     from litellm import run_server
 
     run_server()  # click 커맨드 — sys.argv(--config/--host/--port)를 읽어 프록시 기동
