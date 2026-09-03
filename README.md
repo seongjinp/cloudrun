@@ -24,8 +24,8 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
   `gcloud run deploy`/리비전 갱신 스텝이 없다). push 후 새 리비전을 띄우려면 아래 "배포" 절차대로
   수동으로 `gcloud run deploy`를 실행해야 한다.
 - **qwen 모델 제거**: `config.yaml`의 `qwen-3.5`는 사내망 전용 vLLM(`10.36.114.31`, VPC 내부
-  IP)을 가리켜 개인환경에서는 도달 불가능해 제거. 대신 `gemini-3.7-flash-medium`을 기본 모델
-  (`default: true`)로 지정(2026-08-26 3.6 → 3.7 전환).
+  IP)을 가리켜 개인환경에서는 도달 불가능해 제거. 대신 `gemini-3.8-flash-medium`을 기본 모델
+  (`default: true`)로 지정(2026-09-03 3.7 → 3.8 전환).
 - **`env.py`**: `VERTEX_AI_PROJECT`를 개인 GCP 프로젝트 ID(`project-b70f2ac9-1f7b-4489-bd6`)로
   교체.
 
@@ -40,9 +40,9 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `config.yaml` — 모델 카탈로그(vertex_ai Claude/Gemini). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
   **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
-  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 12엔트리 = 제품 모델 6종
-  (`gemini-3.5-flash-lite`·`gemini-3.6-flash`·`gemini-3.7-flash` 각각 low/medium/high 3변형이
-  한 줄씩). 자기선언 필드(`family`·`family_label`·
+  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 15엔트리 = 제품 모델 7종
+  (`gemini-3.5-flash-lite`·`gemini-3.6-flash`·`gemini-3.7-flash`·`gemini-3.8-flash` 각각
+  low/medium/high 3변형이 한 줄씩). 자기선언 필드(`family`·`family_label`·
   `reasoning_transport`·`reasoning_level(s)`) 계약은 파일 상단 주석에 있다. 이 파일은 **배포의
   기술적 사실만** 소유하고, 접근 권한과 피커 설명 문구는 axagent admin > 모델 탭(DB)이 소유한다
   (그래서 옛 `description` 키는 제거됐다).

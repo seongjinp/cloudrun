@@ -311,8 +311,8 @@ _GEMINI_FLASH_COST_ENTRY = {
 }
 
 # litellm 정식 등재 전인 gemini flash 계열 — 등재되는 대로 여기서 빼면 된다(gemini-3.6-flash는
-# 1.95.0-dev3+에 정식 등재 확인됨; 3.7-flash는 3.6과 동일 근거로 선제 등록).
-_GEMINI_FLASH_REASONING_MODELS = ("gemini-3.6-flash", "gemini-3.7-flash")
+# 1.95.0-dev3+에 정식 등재 확인됨; 3.7-flash·3.8-flash는 3.6과 동일 근거로 선제 등록).
+_GEMINI_FLASH_REASONING_MODELS = ("gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash")
 
 
 def _register_gemini_flash_reasoning_support() -> None:
@@ -356,7 +356,7 @@ def _apply_patches() -> None:
     tool-인자 무결성 필터 + tool-이름 정규화 필터를 끼운다. ② 어댑터 메시지 변환 앞단에서
     mid-conversation system을 user+system-reminder로 재작성한다(스킬 목록 등 — litellm 변환 루프의
     무언 드롭 우회). ③ HostedVLLMChatConfig.transform_request를 감싸 이 요청의 tools 이름 집합을
-    contextvar에 채운다(이름 정규화 재료 — R3-F1). ④ litellm.model_cost에 gemini flash 계열(3.6/3.7)
+    contextvar에 채운다(이름 정규화 재료 — R3-F1). ④ litellm.model_cost에 gemini flash 계열(3.6/3.7/3.8)
     reasoning 지원 플래그를 등록한다(레지스트리 부재로 인한 drop_params 우회 —
     `_register_gemini_flash_reasoning_support` 참고). litellm 핀(1.98.0) 고정 전제 — 핀을
     올릴 때 패치 전부 재검증 대상이다(업스트림이 고치면 ②·④ 제거). (참고: fake-stream 강제 패치는
