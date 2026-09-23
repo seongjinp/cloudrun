@@ -424,39 +424,6 @@ model_list:
       supports_system_messages: true
       supports_tool_choice: true
 
-  # ── GCP Vertex AI — Claude 2종(수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─────────
-  - model_name: claude-sonnet-5
-    litellm_params:
-      model: vertex_ai/claude-sonnet-5
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      max_tokens: 128000
-    model_info:
-      family_label: "Claude Sonnet 5"
-      reasoning_transport: cli_effort
-      reasoning_levels: [low, medium, high]
-      context_window: 1000000
-      max_input_tokens: 1000000
-      max_output_tokens: 128000
-      compaction_ratio: 0.8
-      strip_leading_reasoning: false
-
-  - model_name: claude-opus-4-8
-    litellm_params:
-      model: vertex_ai/claude-opus-4-8
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      max_tokens: 128000
-    model_info:
-      family_label: "Claude Opus 4.8"
-      reasoning_transport: cli_effort
-      reasoning_levels: [low, medium, high]
-      context_window: 1000000
-      max_input_tokens: 1000000
-      max_output_tokens: 128000
-      compaction_ratio: 0.8
-      strip_leading_reasoning: false
-
 litellm_settings:
   drop_params: true
   telemetry: false

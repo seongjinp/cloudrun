@@ -26,8 +26,10 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - **qwen 모델 제거**: `config.yaml`의 `qwen-3.5`는 사내망 전용 vLLM(`10.36.114.31`, VPC 내부
   IP)을 가리켜 개인환경에서는 도달 불가능해 제거. 대신 `gemini-3.8-flash-medium`을 기본 모델
   (`default: true`)로 지정(2026-09-03 3.7 → 3.8 전환).
-- **`env.py`**: `VERTEX_AI_PROJECT`를 개인 GCP 프로젝트 ID(`project-b70f2ac9-1f7b-4489-bd6`)로
-  교체.
+- **`env.py`**: `VERTEX_AI_PROJECT`를 개인 GCP 프로젝트 ID(`project-7f9a422c-5de1-4d8a-856`)로
+  교체(2026-09-23 GCP 계정 변경으로 `project-b70f2ac9-…`에서 이전).
+- **Claude 모델 제거**(2026-09-23): 새 계정에서는 Vertex Model Garden의 Claude를 쓸 수 없어
+  `claude-sonnet-5`·`claude-opus-4-8` 엔트리를 뺐다. Gemini만 남는다.
 
 ## 구조
 
@@ -37,7 +39,7 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 몽키패치(도구 이름 정규화 등, 사내 vLLM 연동
   실측 기반 — hosted_vllm 모델이 없으면 그냥 아무 일도 하지 않는다). 자세한 배경은 파일 상단
   docstring 참고.
-- `config.yaml` — 모델 카탈로그(vertex_ai Claude/Gemini). **모델 카탈로그의 단일 출처는 이
+- `config.yaml` — 모델 카탈로그(vertex_ai Gemini). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
   **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
   엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 15엔트리 = 제품 모델 7종
@@ -49,45 +51,54 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `env.py` — 비민감 기본값(GCP 프로젝트·리전·로그 경로 등)만 채우는 폴백. `LITELLM_MASTER_KEY`
   같은 민감값은 여기 두지 않고 Cloud Run 콘솔(또는 `gcloud run deploy --set-env-vars`/Secret
   Manager)로 직접 주입한다.
+- `scripts/gcp_bootstrap.sh` — 새 GCP 프로젝트 전체 세팅(재실행 안전). `scripts/smoke_test.py` — 봉인 E2E 점검.
+- `cloudbuild.yaml` — 이미지 빌드 정의(소문자 `dockerfile` · 전용 빌드 SA).
 - `scripts/add_litellm_users.py` — 엑셀로 LiteLLM 사용자 계정을 일괄 등록하는 수동 실행용 스크립트
   (CI/CD 미연동, 변경 없음). 사용법은 `scripts/README.md` 참고.
 
-## Cloud Run 배포 전 체크리스트
+## GCP 구성 (2026-09-23 새 계정으로 재구축)
 
-1. **GCP 프로젝트 준비** (`project-b70f2ac9-1f7b-4489-bd6`)
-   - Vertex AI API(`aiplatform.googleapis.com`) 활성화.
-   - Vertex AI Model Garden에서 사용할 Claude/Gemini 모델 활성화(승인 필요한 모델도 있음).
-   - Cloud Run 서비스에 붙는 서비스 계정에 `roles/aiplatform.user` 부여(Cloud Run은 별도 키
-     파일 없이 이 서비스 계정으로 Vertex AI를 호출하는 ADC를 자동으로 쓴다).
-2. **Cloud Run 지속적 배포 트리거 설정**
-   - 소스 브랜치를 `private-dev`로 지정(또는 원하는 브랜치로).
-   - Build Type: Dockerfile, 경로는 리포 루트의 `dockerfile`(소문자 — macOS 대소문자 미구분
-     파일시스템 때문에 `Dockerfile`로 못 바꿨다. 트리거 설정 화면에서 파일명을 정확히
-     `dockerfile`로 지정해야 함).
-   - 이 트리거는 이미지를 빌드해 `gcr.io/<프로젝트>/github.com/seongjinp/cloudrun:<커밋 SHA>`로
-     push까지만 한다 — Cloud Run 리비전은 갱신하지 않는다(아래 "배포" 절차 참고).
-3. **Cloud Run 환경변수**
-   - `LITELLM_MASTER_KEY` — 필수(콘솔의 "변수 및 보안 비밀" 또는 Secret Manager로 등록 권장).
-   - `DATABASE_URL`, `LLM_API_KEY_QWEN`은 더 이상 필요 없음(각각 DB 미사용·qwen 모델 제거).
+**처음부터 다시 세울 때는 [docs/SETUP.md](docs/SETUP.md)** — `scripts/gcp_bootstrap.sh` 한 번 + axagent `.env` 두 파일.
 
-## 배포(코드/config 변경 후 매번 수동)
+| 항목 | 값 |
+| --- | --- |
+| 프로젝트 | `project-7f9a422c-5de1-4d8a-856` |
+| 리전 | `asia-northeast3`(서울) |
+| 이미지 저장소 | Artifact Registry `asia-northeast3-docker.pkg.dev/project-7f9a422c-5de1-4d8a-856/cloudrun/litellm` |
+| Cloud Run 서비스 | `cloudrun` — `https://cloudrun-164768579030.asia-northeast3.run.app` (`allUsers` invoker — axagent 터널은 ID 토큰 없이 부른다) |
+| 런타임 SA | `litellm-gateway@…` — `roles/aiplatform.user`·`roles/secretmanager.secretAccessor`·`roles/logging.logWriter` |
+| 빌드 SA | `cloudbuild-builder@…` — `roles/cloudbuild.builds.builder`(`cloudbuild.yaml`이 지정) |
+| Secret Manager | `LITELLM_MASTER_KEY`, `CRYPTO_PROXY_PRIVATE_KEY` → 서비스 env로 `:latest` 마운트 |
+| 봉인 공개키 | `hZVLUiyOpE4MiwXcDzoxB9T0c0Fa3FCLwteP0VQ5VFA=` (kid `aa26803c48489af8`) — axagent 쪽에 설정 |
 
-`private-dev`에 push하면 Cloud Build가 이미지를 빌드해 Container Registry에 push하지만, 그
-이미지로 Cloud Run 리비전을 실제로 띄우는 건 별도 수동 단계다:
+재구축할 때 활성화할 API: `run`, `cloudbuild`, `artifactregistry`, `aiplatform`, `secretmanager`, `iam`.
+Container Registry(`gcr.io`)는 종료돼서 새 프로젝트에서는 쓸 수 없다. 옛 README의 `gcr.io/...` 경로는 쓰지 않는다.
+
+`CRYPTO_PROXY_PRIVATE_KEY`는 **X25519 raw 32B의 base64(44자)**여야 한다. 임의 문자열이면 부팅이
+거부된다. 새로 만들 때는 `crypto_proxy.wire.keys.generate_keypair()`로 만들고, 개인키는 Secret
+Manager에만, 공개키는 axagent에 둔다.
+
+## 빌드·배포 (코드/config 변경 후 매번 수동)
 
 ```sh
-# 1. push된 커밋의 Cloud Build가 성공했는지 확인 (이미지 태그 = 커밋 SHA)
-gcloud builds list --limit=3 --sort-by=~createTime
+TAG=$(git rev-parse --short HEAD)
+IMAGE=asia-northeast3-docker.pkg.dev/project-7f9a422c-5de1-4d8a-856/cloudrun/litellm:$TAG
 
-# 2. 그 이미지로 새 리비전 배포
-gcloud run deploy cloudrun \
-  --image=gcr.io/project-b70f2ac9-1f7b-4489-bd6/github.com/seongjinp/cloudrun:<커밋 SHA> \
-  --region=europe-west1 \
-  --platform=managed
+# 1. 이미지 빌드 → Artifact Registry push
+gcloud builds submit . --region=asia-northeast3 --config=cloudbuild.yaml --substitutions=_IMAGE=$IMAGE
+
+# 2. 새 리비전 배포 (env·secret·SA·리소스 설정은 기존 리비전 것이 유지된다)
+gcloud run deploy cloudrun --image=$IMAGE --region=asia-northeast3
 ```
 
-`--image`만 지정하면 기존 리비전의 환경변수·리소스 설정은 그대로 유지된다. 배포 후
-`gcloud run services describe cloudrun --region=europe-west1`로 반영된 이미지를 확인할 것.
+최초 생성 시에는 설정 전체를 준다(`NUM_WORKERS=1`은 명시한다 — 1보다 크면 부팅 단정이 거부한다):
+
+```sh
+gcloud run deploy cloudrun --image=$IMAGE --region=asia-northeast3 \
+  --service-account=litellm-gateway@project-7f9a422c-5de1-4d8a-856.iam.gserviceaccount.com \
+  --set-secrets=LITELLM_MASTER_KEY=LITELLM_MASTER_KEY:latest,CRYPTO_PROXY_PRIVATE_KEY=CRYPTO_PROXY_PRIVATE_KEY:latest \
+  --set-env-vars=NUM_WORKERS=1 --memory=2Gi --cpu=1 --timeout=3600
+```
 
 ## 봉인 터널 (crypto_proxy)
 
