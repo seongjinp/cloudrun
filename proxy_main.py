@@ -21,7 +21,8 @@ docstring):
    조용히 drop되던 것을 우회(2026-07-29 라이브 진단 — config.yaml에 reasoning_effort를 걸어도
    Vertex로 나가는 최종 요청에 전혀 안 실리고 있었음을 gcloud logging으로 직접 확인, gemini-3.6-flash
    기준). 각 모델은 litellm에 정식 등재되는 대로(3.6은 1.95.0-dev+) `_GEMINI_FLASH_REASONING_MODELS`
-   에서 빼면 된다.
+   에서 빼면 된다. gemini-4-argon은 모델명 검사(`_is_gemini_3_or_newer`)도 못 통과해
+   `thinkingBudget`으로 번역돼 400이 나므로 `_treat_gemini_4_as_gemini_3_or_newer`가 함께 보정한다.
 
 litellm 핀(1.98.0)이 고정이라 대상 클래스/메서드가 안정적이며, 핀을 올릴 때 재검증 대상이다
 (핀은 `Dockerfile`의 베이스 이미지 태그·`pyproject.toml`의 dependencies가 단일 출처 — 여기 숫자를
@@ -351,6 +352,28 @@ def _register_gemini_flash_reasoning_support() -> None:
             litellm.vertex_chat_models.add(key)
 
 
+def _treat_gemini_4_as_gemini_3_or_newer() -> None:
+    """litellm 1.98.0의 `VertexGeminiConfig._is_gemini_3_or_newer`는 모델명에 "gemini-3"가 들어 있는지만
+    본다. gemini-4-argon은 이 검사를 못 통과해 `reasoning_effort`가 `thinkingLevel`이 아니라
+    `thinkingBudget`으로 번역되고, Vertex가 400("Thinking budget is not supported for this model.
+    Use thinking level instead.")으로 거절한다(2026-10-17 게이트웨이 경유 실호출로 확인). 같은 검사가
+    함수 호출 id 전달·페널티 파라미터 제외에도 쓰이므로 "3 이상" 의미 그대로 gemini-4를 포함시킨다.
+    핀을 올려 상류가 gemini-4를 3 이상으로 보게 되면 이 패치를 제거한다."""
+    from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
+        VertexGeminiConfig,
+    )
+
+    if getattr(VertexGeminiConfig, "_gemini_4_guard", False):
+        return
+    _orig = VertexGeminiConfig._is_gemini_3_or_newer
+
+    def _is_gemini_3_or_newer(model: str) -> bool:
+        return _orig(model) or "gemini-4" in model
+
+    VertexGeminiConfig._is_gemini_3_or_newer = staticmethod(_is_gemini_3_or_newer)
+    VertexGeminiConfig._gemini_4_guard = True
+
+
 def _apply_patches() -> None:
     """런타임 패치 4건(멱등): ① AnthropicStreamWrapper.__init__을 감싸 upstream 앞단에
     tool-인자 무결성 필터 + tool-이름 정규화 필터를 끼운다. ② 어댑터 메시지 변환 앞단에서
@@ -363,6 +386,7 @@ def _apply_patches() -> None:
     2026-07-12 검증 후 원복 — 사용자 결정으로 운영 미채택. 필요 시 git history `c5fd5926`에서
     복원.)"""
     _register_gemini_flash_reasoning_support()
+    _treat_gemini_4_as_gemini_3_or_newer()
 
     from litellm.llms.anthropic.experimental_pass_through.adapters import (
         streaming_iterator as _si,
