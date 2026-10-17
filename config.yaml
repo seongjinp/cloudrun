@@ -34,299 +34,6 @@ model_list:
       compaction_ratio: 0.8
       strip_leading_reasoning: false
 
-  # ── GCP Vertex AI — Gemini 3.5 Flash Lite (한 family의 세 변형) ───────────────────────────
-  # 3.5 Flash-Lite도 thinking_level을 지원한다(Vertex 공식 문서 — 기본이 minimal이라 무지정이면
-  # 사고가 거의 없다). 수준은 반드시 **config의 litellm_params.reasoning_effort**로 박는다:
-  # 요청 파라미터로 넘기면 litellm 모델카드에 없는 모델이라 조용히 드롭된다(실측 — 요청으로 low/high를
-  # 줘도 reasoning_tokens 0, config에 박힌 gemini-3.6-flash는 low 1630 → high 4528로 스케일).
-  - model_name: gemini-3.5-flash-lite-low
-    litellm_params:
-      model: vertex_ai/gemini-3.5-flash-lite
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "low"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.5-flash-lite
-      family_label: "Gemini 3.5 Lite"
-      reasoning_transport: variant
-      reasoning_level: low
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000003
-      output_cost_per_token: 0.0000025
-      cache_read_input_token_cost: 0.00000003
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.5-flash-lite-medium
-    litellm_params:
-      model: vertex_ai/gemini-3.5-flash-lite
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "medium"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.5-flash-lite
-      family_label: "Gemini 3.5 Lite"
-      reasoning_transport: variant
-      reasoning_level: medium
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000003
-      output_cost_per_token: 0.0000025
-      cache_read_input_token_cost: 0.00000003
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.5-flash-lite-high
-    litellm_params:
-      model: vertex_ai/gemini-3.5-flash-lite
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "high"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.5-flash-lite
-      family_label: "Gemini 3.5 Lite"
-      reasoning_transport: variant
-      reasoning_level: high
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000003
-      output_cost_per_token: 0.0000025
-      cache_read_input_token_cost: 0.00000003
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  # ── GCP Vertex AI — Gemini 3.6 Flash (한 family의 세 변형) ────────────────────────────────
-  # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex 기본 thinkingLevel이 medium이라 -medium과
-  # 동일 동작이다(실측: 무지정 722토큰 vs medium 790토큰, 같은 프롬프트·같은 정답).
-  - model_name: gemini-3.6-flash-low
-    litellm_params:
-      model: vertex_ai/gemini-3.6-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "low"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.6-flash
-      family_label: "Gemini 3.6 Flash"
-      reasoning_transport: variant
-      reasoning_level: low
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.6-flash-medium
-    litellm_params:
-      model: vertex_ai/gemini-3.6-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "medium"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.6-flash
-      family_label: "Gemini 3.6 Flash"
-      reasoning_transport: variant
-      reasoning_level: medium
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.6-flash-high
-    litellm_params:
-      model: vertex_ai/gemini-3.6-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "high"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.6-flash
-      family_label: "Gemini 3.6 Flash"
-      reasoning_transport: variant
-      reasoning_level: high
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  # ── GCP Vertex AI — Gemini 3.7 Flash (한 family의 세 변형) ────────────────────────────────
-  # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex 기본 thinkingLevel이 medium이라 -medium과
-  # 동일 동작이다(gemini-3.6-flash 실측 근거를 그대로 적용).
-  - model_name: gemini-3.7-flash-low
-    litellm_params:
-      model: vertex_ai/gemini-3.7-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "low"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.7-flash
-      family_label: "Gemini 3.7 Flash"
-      reasoning_transport: variant
-      reasoning_level: low
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.7-flash-medium
-    litellm_params:
-      model: vertex_ai/gemini-3.7-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "medium"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.7-flash
-      family_label: "Gemini 3.7 Flash"
-      reasoning_transport: variant
-      reasoning_level: medium
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
-  - model_name: gemini-3.7-flash-high
-    litellm_params:
-      model: vertex_ai/gemini-3.7-flash
-      vertex_project: os.environ/VERTEX_AI_PROJECT
-      vertex_location: os.environ/VERTEX_AI_LOCATION
-      additional_drop_params: ["output_config", "context_management"]
-      reasoning_effort: "high"
-      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
-      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
-      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
-      allowed_openai_params: ["reasoning_effort"]
-      max_tokens: 65536
-    model_info:
-      family: gemini-3.7-flash
-      family_label: "Gemini 3.7 Flash"
-      reasoning_transport: variant
-      reasoning_level: high
-      context_window: 1048576
-      max_input_tokens: 1048576
-      max_output_tokens: 65536
-      strip_leading_reasoning: false
-      input_cost_per_token: 0.0000015
-      output_cost_per_token: 0.0000075
-      litellm_provider: "vertex_ai"
-      mode: "chat"
-      supports_reasoning: true
-      supports_function_calling: true
-      supports_vision: true
-      supports_system_messages: true
-      supports_tool_choice: true
-
   # ── GCP Vertex AI — Gemini 3.8 Flash (한 family의 세 변형) ────────────────────────────────
   # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex 기본 thinkingLevel이 medium이라 -medium과
   # 동일 동작이다(gemini-3.6-flash 실측 근거를 그대로 적용).
@@ -419,6 +126,107 @@ model_list:
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
       cache_read_input_token_cost: 0.00000015
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  # ── GCP Vertex AI — Gemini 4 Argon (한 family의 세 변형) ──────────────────────────────────
+  # 단가는 Vertex 가격 페이지의 정가(2026-12-01~, Global 입력 $4 · 캐시 $0.2 · 출력 $20 /1M — 2026-10-17 확인).
+  # 11-30까지는 정가를 청구한 뒤 50%를 크레딧으로 돌려주는 프로모션이라 청구 단가표는 같다. 암시적 캐시만
+  # 지원(명시적 캐시 미지원)이라 캐시 쓰기 단가는 없다. 추론 수준은 low/medium/high(기본 수준은 문서에
+  # 없다 — 무지정 엔트리를 두지 않고 3.8과 같은 3변형으로 명시한다).
+  - model_name: gemini-4-argon-low
+    litellm_params:
+      model: vertex_ai/gemini-4-argon
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "low"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
+      max_tokens: 65536
+    model_info:
+      family: gemini-4-argon
+      family_label: "Gemini 4 Argon"
+      reasoning_transport: variant
+      reasoning_level: low
+      context_window: 1048576
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.000004
+      output_cost_per_token: 0.00002
+      cache_read_input_token_cost: 0.0000002
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  - model_name: gemini-4-argon-medium
+    litellm_params:
+      model: vertex_ai/gemini-4-argon
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "medium"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
+      max_tokens: 65536
+    model_info:
+      family: gemini-4-argon
+      family_label: "Gemini 4 Argon"
+      reasoning_transport: variant
+      reasoning_level: medium
+      context_window: 1048576
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.000004
+      output_cost_per_token: 0.00002
+      cache_read_input_token_cost: 0.0000002
+      litellm_provider: "vertex_ai"
+      mode: "chat"
+      supports_reasoning: true
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  - model_name: gemini-4-argon-high
+    litellm_params:
+      model: vertex_ai/gemini-4-argon
+      vertex_project: os.environ/VERTEX_AI_PROJECT
+      vertex_location: os.environ/VERTEX_AI_LOCATION
+      additional_drop_params: ["output_config", "context_management"]
+      reasoning_effort: "high"
+      # drop_params(true) + LITELLM_LOCAL_MODEL_COST_MAP는 벤더 코스트맵에 없는 모델을
+      # supports_reasoning=False로 보고 reasoning_effort를 조용히 떨어뜨린다(실측). litellm이
+      # 제공하는 강제 통과 목록으로 그 드롭을 막는다.
+      allowed_openai_params: ["reasoning_effort"]
+      max_tokens: 65536
+    model_info:
+      family: gemini-4-argon
+      family_label: "Gemini 4 Argon"
+      reasoning_transport: variant
+      reasoning_level: high
+      context_window: 1048576
+      max_input_tokens: 1048576
+      max_output_tokens: 65536
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.000004
+      output_cost_per_token: 0.00002
+      cache_read_input_token_cost: 0.0000002
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true

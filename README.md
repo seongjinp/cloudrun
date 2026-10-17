@@ -42,9 +42,8 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `config.yaml` — 모델 카탈로그(vertex_ai Gemini). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
   **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
-  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 15엔트리 = 제품 모델 7종
-  (`gemini-3.5-flash-lite`·`gemini-3.6-flash`·`gemini-3.7-flash`·`gemini-3.8-flash` 각각
-  low/medium/high 3변형이 한 줄씩). 자기선언 필드(`family`·`family_label`·
+  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 Gemini 6엔트리 = 제품 모델 2종
+  (`gemini-3.8-flash`·`gemini-4-argon` 각각 low/medium/high 3변형이 한 줄씩). 자기선언 필드(`family`·`family_label`·
   `reasoning_transport`·`reasoning_level(s)`) 계약은 파일 상단 주석에 있다. 이 파일은 **배포의
   기술적 사실만** 소유하고, 접근 권한과 피커 설명 문구는 axagent admin > 모델 탭(DB)이 소유한다
   (그래서 옛 `description` 키는 제거됐다).
