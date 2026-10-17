@@ -39,10 +39,10 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 몽키패치(도구 이름 정규화 등, 사내 vLLM 연동
   실측 기반 — hosted_vllm 모델이 없으면 그냥 아무 일도 하지 않는다). 자세한 배경은 파일 상단
   docstring 참고.
-- `config.yaml` — 모델 카탈로그(vertex_ai Gemini). **모델 카탈로그의 단일 출처는 이
+- `config.yaml` — 모델 카탈로그(vertex_ai Gemini + Anthropic 직결 Claude). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
   **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
-  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 Gemini 6엔트리 = 제품 모델 2종
+  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 Gemini 6엔트리 = 제품 모델 2종(+ qwen·Claude Sonnet 5.5 단일 엔트리)
   (`gemini-3.8-flash`·`gemini-4-argon` 각각 low/medium/high 3변형이 한 줄씩). 자기선언 필드(`family`·`family_label`·
   `reasoning_transport`·`reasoning_level(s)`) 계약은 파일 상단 주석에 있다. 이 파일은 **배포의
   기술적 사실만** 소유하고, 접근 권한과 피커 설명 문구는 axagent admin > 모델 탭(DB)이 소유한다
@@ -97,6 +97,17 @@ gcloud run deploy cloudrun --image=$IMAGE --region=asia-northeast3 \
   --service-account=litellm-gateway@project-7f9a422c-5de1-4d8a-856.iam.gserviceaccount.com \
   --set-secrets=LITELLM_MASTER_KEY=LITELLM_MASTER_KEY:latest,CRYPTO_PROXY_PRIVATE_KEY=CRYPTO_PROXY_PRIVATE_KEY:latest \
   --set-env-vars=NUM_WORKERS=1 --memory=2Gi --cpu=1 --timeout=3600
+```
+
+### Anthropic API 키 (Claude 직결 모델)
+
+`claude-sonnet-5-5`는 Anthropic API로 직접 나간다. 키는 Secret Manager `ANTHROPIC_API_KEY`에만 두고
+서비스에 붙인다(키를 셸 기록·명령행에 남기지 않는다):
+
+```sh
+# 키를 stdin으로 — 최초 1회 secret 생성, 교체는 `versions add`
+read -rs K && printf %s "$K" | gcloud secrets create ANTHROPIC_API_KEY --data-file=- --replication-policy=automatic; unset K
+gcloud run services update cloudrun --region=asia-northeast3 --update-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
 ```
 
 ## 봉인 터널 (crypto_proxy)
