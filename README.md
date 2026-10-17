@@ -23,9 +23,9 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
   Cloud Run 배포는 자동이 아니다**(2026-08-26 실측: 이 트리거는 이미지 빌드+push까지만 하고
   `gcloud run deploy`/리비전 갱신 스텝이 없다). push 후 새 리비전을 띄우려면 아래 "배포" 절차대로
   수동으로 `gcloud run deploy`를 실행해야 한다.
-- **qwen 모델 제거**: `config.yaml`의 `qwen-3.5`는 사내망 전용 vLLM(`10.36.114.31`, VPC 내부
-  IP)을 가리켜 개인환경에서는 도달 불가능해 제거. 대신 `gemini-3.8-flash-medium`을 기본 모델
-  (`default: true`)로 지정(2026-09-03 3.7 → 3.8 전환).
+- **qwen 모델 제거**: 사내 vLLM(VPC 내부 IP) 전용이던 `qwen-3.5`는 개인환경에서 도달할 수 없어 뺐다
+  (공개 NVIDIA 서빙 대체 항목도 2026-10-17에 삭제 — 그에 딸린 hosted_vllm 호환 패치도 함께 지웠다).
+  `gemini-3.8-flash-medium`이 기본 모델(`default: true`)이다.
 - **`env.py`**: `VERTEX_AI_PROJECT`를 개인 GCP 프로젝트 ID(`project-7f9a422c-5de1-4d8a-856`)로
   교체(2026-09-23 GCP 계정 변경으로 `project-b70f2ac9-…`에서 이전).
 - **Claude 모델 제거**(2026-09-23): 새 계정에서는 Vertex Model Garden의 Claude를 쓸 수 없어
@@ -33,16 +33,15 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 
 ## 구조
 
-- `requirements.txt` — `litellm[proxy]==1.98.0` 단일 의존성.
+- `requirements.txt` — `litellm[proxy]==1.105.1` 단일 의존성.
 - `dockerfile` — `python:3.12.11-slim` 위에 의존성 설치 + `proxy_main.py`/`config.yaml`/`env.py`를
   얹는 단일 스테이지 앱 이미지. 비루트 사용자(`appuser`)로 기동.
-- `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 몽키패치(도구 이름 정규화 등, 사내 vLLM 연동
-  실측 기반 — hosted_vllm 모델이 없으면 그냥 아무 일도 하지 않는다). 자세한 배경은 파일 상단
-  docstring 참고.
+- `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 패치(Vertex Gemini 사고 요약 억제) + 봉투 계층.
+  자세한 배경은 파일 상단 docstring 참고.
 - `config.yaml` — 모델 카탈로그(vertex_ai Gemini + Anthropic 직결 Claude). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
   **엔트리 수 ≠ 소비자(axagent) 피커 항목 수다**(2026-08-02 2축 재설계): `model_info.family`가 같은
-  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 Gemini 6엔트리 = 제품 모델 2종(+ qwen·Claude Sonnet/Opus/Haiku 5.5 단일 엔트리)
+  엔트리들은 피커에 한 줄로 접히고 그 차이가 **추론 수준**이 된다 — 현재 Gemini 6엔트리 = 제품 모델 2종(+ Claude Sonnet/Opus/Haiku 5.5 단일 엔트리)
   (`gemini-3.8-flash`·`gemini-4-argon` 각각 low/medium/high 3변형이 한 줄씩). 자기선언 필드(`family`·`family_label`·
   `reasoning_transport`·`reasoning_level(s)`) 계약은 파일 상단 주석에 있다. 이 파일은 **배포의
   기술적 사실만** 소유하고, 접근 권한과 피커 설명 문구는 axagent admin > 모델 탭(DB)이 소유한다
@@ -113,7 +112,7 @@ gcloud run services update cloudrun --region=asia-northeast3 --update-secrets=AN
 ## 봉인 터널 (crypto_proxy)
 
 사내 운영 backend ↔ 이 게이트웨이 구간이 평문 HTTP라 보안 조직이 암호화를 권고했다. `proxy_main.py`의
-**패치 ⑤**가 litellm 앱을 통째로 봉투 미들웨어로 감싸, `POST /_crypto`로 온 봉인 요청만 복호해
+**봉투 계층**(`_install_crypto_proxy`)이 litellm 앱을 통째로 봉투 미들웨어로 감싸, `POST /_crypto`로 온 봉인 요청만 복호해
 원래 scope로 재구성하고 응답을 다시 봉인해 스트리밍한다. 설계 정본은 axagent의
 `docs/superpowers/specs/2026-08-31-crypto-proxy-payload-encryption-design.md`다.
 
@@ -132,7 +131,7 @@ bash scripts/sync_crypto_proxy.sh     # 정본(axagent/crypto_proxy)에서 다�
 `kid`로 구분되므로 시행착오가 없다. **「키가 있을 때만 봉인」 같은 조건부로 만들지 않는다** — env 한
 줄을 지우는 것만으로 조용히 평문으로 돌아가는 fail-open이 된다.
 
-`NUM_WORKERS>1`이면 워커가 별도 프로세스로 떠서 이 파일을 안 거치고 패치 ①~⑤가 전부 사라지므로,
+`NUM_WORKERS>1`이면 워커가 별도 프로세스로 떠서 이 파일을 안 거치고 패치와 봉투 계층이 전부 사라지므로,
 기동 단정이 그것도 거부한다.
 
 **최초 전환은 양쪽이 동시에 바뀌어야 한다** — 어느 쪽을 먼저 바꿔도 그 사이 모델 트래픽이 전부

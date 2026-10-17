@@ -1,4 +1,4 @@
-litellm[proxy]==1.98.0
+litellm[proxy]==1.105.1
 # Vertex AI 인증(google.auth)에 필요 — litellm[proxy]에는 포함되지 않고
 # litellm 자체 "google"/"proxy-runtime" extra로 분리되어 있음. 없으면
 # vertex_ai/* 호출(Gemini, Claude on Vertex 전부) 시 auth 단계에서
@@ -6,7 +6,7 @@ litellm[proxy]==1.98.0
 google-cloud-aiplatform>=1.133.0,<2.0
 
 # crypto_proxy 봉투 계층(X25519 · HKDF · AES-256-GCM). 상한은 litellm[proxy]가 정한다
-# (1.98.0 = `<51.0,>=49.0.0`) — 그 범위 밖을 요구하면 이미지 빌드가 ResolutionImpossible로 죽는다.
+# (1.105.1 = 설치 시 50.0.2 확인) — 그 범위 밖을 요구하면 이미지 빌드가 ResolutionImpossible로 죽는다.
 # 양쪽 정확 버전은 어차피 갈린다(온프렘 49.0.0 · 여기 50.0.1). 그 비대칭을 안전하게 만드는 것은
 # 골든 벡터이고, 사본이 같은 입력에 같은 바이트를 못 내면 부팅이 거부된다.
 cryptography>=49.0.0,<51.0

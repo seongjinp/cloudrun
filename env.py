@@ -11,5 +11,5 @@ os.environ.setdefault("LITELLM_MODE", "PRODUCTION")
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 os.environ.setdefault("LITELLM_TELEMETRY", "False")
 
-# 추론 유출 대응 — Vertex 사고 요약 억제(proxy_main 패치 ④). 롤백은 서비스 env로 "0".
+# 추론 유출 대응 — Vertex 사고 요약 억제(proxy_main 패치). 롤백은 서비스 env로 "0".
 os.environ.setdefault("GATEWAY_SUPPRESS_THOUGHTS", "1")

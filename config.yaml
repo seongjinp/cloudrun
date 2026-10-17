@@ -14,26 +14,6 @@
 #
 # **엔트리 순서 = picker 표시 순서다**(backend가 카탈로그 응답 순서를 그대로 쓴다).
 model_list:
-  # ── 사내 vLLM(prod 타겟) — Cloud Run에서는 사내망에 못 닿아 공개 NVIDIA 서빙으로 등록 ────────
-  # 운영 게이트웨이(사내)는 vLLM을 직접 보지만 Cloud Run은 VPC 내부 IP에 도달할 수 없다. picker에
-  # prod 기본 모델이 보여야 하므로 같은 모델의 공개 서빙으로 등록한다 — Cloud Run env에
-  # LLM_API_KEY_NVIDIA_QWEN을 넣으면 dev에서도 실제 호출되고, 없으면 인증 오류로 빠르게 실패한다.
-  # 추론 수준 미지원(reasoning_* 없음 — NVIDIA qwen 서빙의 thinking은 어댑터 결함으로 비활성 유지).
-  - model_name: qwen-3.5
-    litellm_params:
-      model: hosted_vllm/qwen/qwen3.5-122b-a10b
-      api_base: https://integrate.api.nvidia.com/v1
-      api_key: os.environ/LLM_API_KEY_NVIDIA_QWEN
-      additional_drop_params: ["output_config", "context_management"]
-      max_tokens: 16384
-    model_info:
-      family_label: "Qwen 3.5"
-      context_window: 262144
-      max_input_tokens: 262144
-      max_output_tokens: 16384
-      compaction_ratio: 0.8
-      strip_leading_reasoning: false
-
   # ── GCP Vertex AI — Gemini 3.8 Flash (한 family의 세 변형) ────────────────────────────────
   # reasoning_effort 무지정 엔트리는 두지 않는다 — Vertex 기본 thinkingLevel이 medium이라 -medium과
   # 동일 동작이다(gemini-3.6-flash 실측 근거를 그대로 적용).
