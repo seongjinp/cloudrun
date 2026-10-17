@@ -2,11 +2,11 @@
 (Cloud Run 배포 전용 사본 — 로컬 dev는 `gateway/proxy_main.py`를 따로 쓴다, 2026-07-23 소스 분리).
 
 `Dockerfile`의 CMD가 바닐라 `litellm --config ...` 대신 `python proxy_main.py --config ...`로
-기동한다. 프록시를 띄우기 전에 패치 1건을 적용하고, litellm 앱을 봉투 미들웨어로 감싼다.
+기동한다. 프록시를 띄우기 전에 패치 2건을 적용하고, litellm 앱을 봉투 미들웨어로 감싼다.
 
-1. **Vertex Gemini 사고 요약 억제**(`GATEWAY_SUPPRESS_THOUGHTS`, 기본 1) — `_apply_patches` 안.
-   근거·롤백은 그 자리 주석.
-2. **봉투 계층**(`_install_crypto_proxy`) — `POST /_crypto`로 온 봉인 요청만 복호해 원래 scope로
+1. **gemini-4 명시적 컨텍스트 캐시 생성 차단** — `_apply_patches` 안. 근거는 그 자리 주석.
+2. **Vertex Gemini 사고 요약 억제**(`GATEWAY_SUPPRESS_THOUGHTS`, 기본 1) — 같은 곳. 롤백은 그 자리 주석.
+3. **봉투 계층**(`_install_crypto_proxy`) — `POST /_crypto`로 온 봉인 요청만 복호해 원래 scope로
    재구성하고 응답을 다시 봉인한다. 키가 없으면 뜨지 않는다.
 
 옛 hosted_vllm 호환 패치(도구 이름 정규화 · tool-call 인자 무결성 검증 · mid-conversation system
@@ -29,8 +29,38 @@ import sys
 
 
 def _apply_patches() -> None:
-    """런타임 패치(멱등): Vertex Gemini 사고 요약 억제. litellm 핀 고정 전제 — 핀을 올릴 때
-    대상 메서드 시그니처를 재검증한다."""
+    """런타임 패치(멱등): gemini-4 명시적 캐시 차단 · Vertex Gemini 사고 요약 억제. litellm 핀
+    고정 전제 — 핀을 올릴 때 대상 메서드 시그니처를 재검증한다."""
+    # Vertex 명시적 컨텍스트 캐시 생성 차단(gemini-4 계열). litellm은 요청 콘텐츠의 `cache_control`
+    # 마커를 Vertex `cachedContents`(명시적 캐시) 생성 호출로 바꾸는데, gemini-4-argon은 명시적
+    # 캐시를 지원하지 않아 400("does not support explicit context caching")이 난다 — 앱의 claude
+    # CLI가 큰 프롬프트에 `cache_control`을 싣는 경로에서 재현(2026-10-17, ≥ 최소 토큰 수일 때만).
+    # 이 모델은 암시적 캐시만 쓰므로 명시적 캐시 단계를 건너뛰고 메시지를 그대로 넘긴다.
+    from litellm.llms.vertex_ai.context_caching.vertex_ai_context_caching import (
+        ContextCachingEndpoints,
+    )
+
+    if not getattr(ContextCachingEndpoints, "_no_explicit_cache_guard", False):
+        _orig_check = ContextCachingEndpoints.check_and_create_cache
+        _orig_acheck = ContextCachingEndpoints.async_check_and_create_cache
+
+        def _no_explicit_cache(kwargs) -> bool:
+            return "gemini-4" in str(kwargs.get("model", ""))
+
+        def _patched_check(self, *args, **kwargs):
+            if _no_explicit_cache(kwargs):
+                return kwargs["messages"], kwargs["optional_params"], kwargs.get("cached_content")
+            return _orig_check(self, *args, **kwargs)
+
+        async def _patched_acheck(self, *args, **kwargs):
+            if _no_explicit_cache(kwargs):
+                return kwargs["messages"], kwargs["optional_params"], kwargs.get("cached_content")
+            return await _orig_acheck(self, *args, **kwargs)
+
+        ContextCachingEndpoints.check_and_create_cache = _patched_check
+        ContextCachingEndpoints.async_check_and_create_cache = _patched_acheck
+        ContextCachingEndpoints._no_explicit_cache_guard = True
+
     # Vertex Gemini 사고 요약 억제(GATEWAY_SUPPRESS_THOUGHTS, 기본 1 — env.py).
     # thinkingConfig에 includeThoughts=False를 강제한다: 사고는 켠 채(level/budget 유지) 사고 요약
     # 파트만 생성하지 않는다. litellm 표준 파라미터로는 이 조합을 표현할 수 없다 —

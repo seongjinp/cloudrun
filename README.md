@@ -36,7 +36,7 @@ Artifact Registry, Prisma DB 연동)을 그대로 유지한다. 이 `private-dev
 - `requirements.txt` — `litellm[proxy]==1.105.1` 단일 의존성.
 - `dockerfile` — `python:3.12.11-slim` 위에 의존성 설치 + `proxy_main.py`/`config.yaml`/`env.py`를
   얹는 단일 스테이지 앱 이미지. 비루트 사용자(`appuser`)로 기동.
-- `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 패치(Vertex Gemini 사고 요약 억제) + 봉투 계층.
+- `proxy_main.py` — LiteLLM 프록시 진입점 + 런타임 패치(gemini-4 명시적 캐시 차단 · Vertex Gemini 사고 요약 억제) + 봉투 계층.
   자세한 배경은 파일 상단 docstring 참고.
 - `config.yaml` — 모델 카탈로그(vertex_ai Gemini + Anthropic 직결 Claude). **모델 카탈로그의 단일 출처는 이
   파일**이다(`STORE_MODEL_IN_DB=False`).
