@@ -16,7 +16,7 @@ GCP 계정이 바뀌어 처음부터 다시 세울 때 쓰는 매뉴얼이다. 2
 | 빌드 SA | `cloudbuild-builder@…` — `cloudbuild.builds.builder` |
 | 비밀값 | Secret Manager `LITELLM_MASTER_KEY`, `CRYPTO_PROXY_PRIVATE_KEY` |
 | 봉인 공개키 | `hZVLUiyOpE4MiwXcDzoxB9T0c0Fa3FCLwteP0VQ5VFA=` (kid `aa26803c48489af8`) |
-| 모델 | Gemini(3.8-flash·4-argon × low/medium/high) + Anthropic 직결 Claude Sonnet 5.5(`ANTHROPIC_API_KEY` Secret). 이 계정은 Vertex Claude를 쓸 수 없다. |
+| 모델 | Gemini(3.8-flash·4-argon × low/medium/high) + Anthropic 직결 Claude Sonnet·Opus·Haiku 5.5(`ANTHROPIC_API_KEY` Secret). 이 계정은 Vertex Claude를 쓸 수 없다. |
 
 ## 0. 사람이 먼저 할 일
 

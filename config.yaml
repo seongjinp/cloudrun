@@ -235,10 +235,13 @@ model_list:
       supports_system_messages: true
       supports_tool_choice: true
 
-  # ── Anthropic API 직결 — Claude Sonnet 5.5 (수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─────
+  # ── Anthropic API 직결 — Claude Sonnet 5.5 · Opus 5.5 · Haiku 5.5 (수준은 CLI --effort 네이티브 — 변형 엔트리 불요) ─
   # 새 GCP 계정은 Vertex Claude를 쓸 수 없어 Anthropic API 키(ANTHROPIC_API_KEY, Secret Manager)로 직접
-  # 호출한다. 단가는 Anthropic 가격 페이지(2026-10-17 확인): 입력 $2 · 5분 캐시 쓰기 $2.50 · 캐시 읽기
-  # $0.10(입력의 0.05배) · 출력 $10 /1M. 프로모션 크레딧(Agent SDK·API 적용)으로 개발 중 테스트에 쓴다.
+  # 호출한다. 단가는 Anthropic 가격 페이지(2026-10-17 확인, /1M): Sonnet 입력 $2 · 5분 캐시 쓰기 $2.50 ·
+  # 캐시 읽기 $0.10 · 출력 $10 / Opus $4 · $5 · $0.20 · $20 / Haiku $0.10 · $0.125 · $0.01 · $0.50.
+  # ⚠ Haiku 5.5는 프롬프트 100K 초과분이 5배 단가($0.50/$2.50 …)인 구간제인데 model_info는 단일 단가라
+  # 100K 이하 단가만 적었다 — 긴 프롬프트의 Haiku 금액은 앱 화면에서 실청구보다 낮게 나온다.
+  # 프로모션 크레딧(Agent SDK·API 적용)으로 개발 중 테스트에 쓴다.
   - model_name: claude-sonnet-5-5
     litellm_params:
       model: anthropic/claude-sonnet-5-5
@@ -257,6 +260,56 @@ model_list:
       output_cost_per_token: 0.00001
       cache_read_input_token_cost: 0.0000001
       cache_creation_input_token_cost: 0.0000025
+      litellm_provider: "anthropic"
+      mode: "chat"
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  - model_name: claude-opus-5-5
+    litellm_params:
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 128000
+    model_info:
+      family_label: "Claude Opus 5.5"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
+      context_window: 1000000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
+      compaction_ratio: 0.8
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.000004
+      output_cost_per_token: 0.00002
+      cache_read_input_token_cost: 0.0000002
+      cache_creation_input_token_cost: 0.000005
+      litellm_provider: "anthropic"
+      mode: "chat"
+      supports_function_calling: true
+      supports_vision: true
+      supports_system_messages: true
+      supports_tool_choice: true
+
+  - model_name: claude-haiku-5-5
+    litellm_params:
+      model: anthropic/claude-haiku-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 128000
+    model_info:
+      family_label: "Claude Haiku 5.5"
+      reasoning_transport: cli_effort
+      reasoning_levels: [low, medium, high]
+      context_window: 1000000
+      max_input_tokens: 1000000
+      max_output_tokens: 128000
+      compaction_ratio: 0.8
+      strip_leading_reasoning: false
+      input_cost_per_token: 0.0000001
+      output_cost_per_token: 0.0000005
+      cache_read_input_token_cost: 0.00000001
+      cache_creation_input_token_cost: 0.000000125
       litellm_provider: "anthropic"
       mode: "chat"
       supports_function_calling: true
