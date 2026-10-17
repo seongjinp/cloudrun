@@ -353,6 +353,7 @@ model_list:
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
+      cache_read_input_token_cost: 0.00000015
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
@@ -384,6 +385,7 @@ model_list:
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
+      cache_read_input_token_cost: 0.00000015
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
@@ -416,6 +418,7 @@ model_list:
       strip_leading_reasoning: false
       input_cost_per_token: 0.0000015
       output_cost_per_token: 0.0000075
+      cache_read_input_token_cost: 0.00000015
       litellm_provider: "vertex_ai"
       mode: "chat"
       supports_reasoning: true
