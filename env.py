@@ -13,3 +13,6 @@ os.environ.setdefault("LITELLM_TELEMETRY", "False")
 
 # 추론 유출 대응 — Vertex 사고 요약 억제(proxy_main 패치). 롤백은 서비스 env로 "0".
 os.environ.setdefault("GATEWAY_SUPPRESS_THOUGHTS", "1")
+
+# 빈 답변 대응 — 함수 선언이 있는 Vertex Gemini 요청을 VALIDATED 함수 호출 모드로(proxy_main 패치). 롤백은 서비스 env로 "0".
+os.environ.setdefault("GATEWAY_VALIDATED_FUNCTION_CALLS", "1")

@@ -2,11 +2,13 @@
 (Cloud Run 배포 전용 사본 — 로컬 dev는 `gateway/proxy_main.py`를 따로 쓴다, 2026-07-23 소스 분리).
 
 `Dockerfile`의 CMD가 바닐라 `litellm --config ...` 대신 `python proxy_main.py --config ...`로
-기동한다. 프록시를 띄우기 전에 패치 2건을 적용하고, litellm 앱을 봉투 미들웨어로 감싼다.
+기동한다. 프록시를 띄우기 전에 패치 3건을 적용하고, litellm 앱을 봉투 미들웨어로 감싼다.
 
 1. **gemini-4 명시적 컨텍스트 캐시 생성 차단** — `_apply_patches` 안. 근거는 그 자리 주석.
 2. **Vertex Gemini 사고 요약 억제**(`GATEWAY_SUPPRESS_THOUGHTS`, 기본 1) — 같은 곳. 롤백은 그 자리 주석.
-3. **봉투 계층**(`_install_crypto_proxy`) — `POST /_crypto`로 온 봉인 요청만 복호해 원래 scope로
+3. **Vertex Gemini 함수 호출 VALIDATED 모드**(`GATEWAY_VALIDATED_FUNCTION_CALLS`, 기본 1) — 같은 곳.
+   깨진 도구 호출(MALFORMED_FUNCTION_CALL)이 빈 답변으로 새는 것을 막는다. 롤백은 그 자리 주석.
+4. **봉투 계층**(`_install_crypto_proxy`) — `POST /_crypto`로 온 봉인 요청만 복호해 원래 scope로
    재구성하고 응답을 다시 봉인한다. 키가 없으면 뜨지 않는다.
 
 옛 hosted_vllm 호환 패치(도구 이름 정규화 · tool-call 인자 무결성 검증 · mid-conversation system
@@ -29,8 +31,8 @@ import sys
 
 
 def _apply_patches() -> None:
-    """런타임 패치(멱등): gemini-4 명시적 캐시 차단 · Vertex Gemini 사고 요약 억제. litellm 핀
-    고정 전제 — 핀을 올릴 때 대상 메서드 시그니처를 재검증한다."""
+    """런타임 패치(멱등): gemini-4 명시적 캐시 차단 · Vertex Gemini 사고 요약 억제 · Vertex Gemini 함수 호출
+    VALIDATED 모드. litellm 핀 고정 전제 — 핀을 올릴 때 대상 메서드 시그니처를 재검증한다."""
     # Vertex 명시적 컨텍스트 캐시 생성 차단(gemini-4 계열). litellm은 요청 콘텐츠의 `cache_control`
     # 마커를 Vertex `cachedContents`(명시적 캐시) 생성 호출로 바꾸는데, gemini-4-argon은 명시적
     # 캐시를 지원하지 않아 400("does not support explicit context caching")이 난다 — 앱의 claude
@@ -88,6 +90,48 @@ def _apply_patches() -> None:
 
             VertexGeminiConfig.map_openai_params = _patched_map
             VertexGeminiConfig._suppress_thoughts_guard = True
+
+    # Vertex Gemini 함수 호출 스키마 강제(GATEWAY_VALIDATED_FUNCTION_CALLS, 기본 1 — env.py).
+    # 함수 선언이 있는 요청의 functionCallingConfig.mode를 VALIDATED(함수 호출 또는 자연어만, 함수 스키마
+    # 준수 보장 — Vertex 함수 호출 가이드)로 둔다. 호출자가 ANY·NONE을 정했으면 그대로 두고, 내장 도구만 있는
+    # 요청(googleSearch·urlContext — 앱의 웹 도구)은 건드리지 않는다.
+    #
+    # 근거(실측 2026-10-18, 앱 탐침 인스턴스 + 같은 litellm·config·패치의 로컬 복제본, gemini-3.8-flash low):
+    # Gemini가 도구 호출을 깨뜨리면 Vertex는 finishReason=MALFORMED_FUNCTION_CALL에 parts 없이 끝내고, litellm은
+    # 그것을 stop → Anthropic end_turn + 빈 text로 접어 claude CLI에는 빈 답변으로 보인다. 방아쇠는 CLI의
+    # mid-conversation system 메시지(<total_tokens>·훅 안내·sandbox 안내)를 litellm이 Gemini에서 "Operator note …"
+    # user 텍스트로 마지막 user 턴 끝에 두는 모양이다. 앱 16대화 249요청 중 18건(7.2%)이 빈 답변이었고, 그 요청
+    # 원문 재생에서 패치 전 약 76%가 깨졌는데 VALIDATED는 108회 중 0, 같은 16대화 재측정 217요청 중 0이었다.
+    # 명시적 캐시를 쓰면 litellm이 이 toolConfig를 cachedContents 생성 본문으로 옮긴다(캐시 키가 바뀌어 한 번 새로 생긴다).
+    # 롤백은 서비스 env `GATEWAY_VALIDATED_FUNCTION_CALLS=0`(재빌드 불필요).
+    if os.environ.get("GATEWAY_VALIDATED_FUNCTION_CALLS", "1") == "1":
+        from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
+            VertexGeminiConfig,
+        )
+
+        if not getattr(VertexGeminiConfig, "_validated_calls_guard", False):
+            _orig_map_validated = VertexGeminiConfig.map_openai_params
+
+            def _validated_map(self, non_default_params, optional_params, model, drop_params):
+                out = _orig_map_validated(self, non_default_params, optional_params, model, drop_params)
+                if not isinstance(out, dict):
+                    return out
+                has_functions = any(
+                    isinstance(tool, dict) and (tool.get("function_declarations") or tool.get("functionDeclarations"))
+                    for tool in out.get("tools") or []
+                )
+                if not has_functions:
+                    return out
+                choice = out.get("tool_choice")
+                cfg = choice.get("functionCallingConfig") if isinstance(choice, dict) else None
+                if choice is None:
+                    out["tool_choice"] = {"functionCallingConfig": {"mode": "VALIDATED"}}
+                elif isinstance(cfg, dict) and cfg.get("mode") == "AUTO":
+                    cfg["mode"] = "VALIDATED"
+                return out
+
+            VertexGeminiConfig.map_openai_params = _validated_map
+            VertexGeminiConfig._validated_calls_guard = True
 
 
 def _effective_num_workers() -> int:
